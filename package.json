@@ -1,0 +1,31 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev":"nodemon app.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.1",
+    "bcryptjs": "^3.0.2",
+        "@arcjet/inspect": "^1.0.0-beta.8",
+    "@arcjet/node": "^1.0.0-beta.8",
+
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemon": "^3.1.10",
+    "pg": "^8.16.0",
+    "pg-pool": "^3.10.0"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.9.0",
+    "prisma": "^6.9.0"
+  }
+}
