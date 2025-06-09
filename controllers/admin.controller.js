@@ -1,9 +1,7 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
+import prisma from "../prisma/client.js";
 
-
-
+//Outlets
 export const addOutlets = async(req , res , next) => {
     const { name, address, phone, email } = req.body;
 
@@ -36,7 +34,6 @@ export const addOutlets = async(req , res , next) => {
     res.status(500).json({ message: "Internal server error" });
   }
 }
-
 export const getOutlets = async(req , res , next) => {
     try {
     const outlets = await prisma.outlet.findMany();
@@ -46,7 +43,7 @@ export const getOutlets = async(req , res , next) => {
     res.status(500).json({ message: "Internal server error" });
   }
 }
-
+//Staff Management
 export const outletAddStaff = async(req , res , next) => {
     try {
     const { email, password, fullName, phone, outletId ,staffRole,permissions = [] } = req.body;
@@ -235,3 +232,4 @@ export const getOutletStaff = async (req , res , next) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 }
+

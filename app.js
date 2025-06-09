@@ -2,7 +2,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import  express from "express";
-import pool from "./db/db.js";
 const app = express();
 const PORT = process.env.PORT || 5500;
 
@@ -13,7 +12,7 @@ import arjectMiddleware from './middlewares/arcjet.middleware.js';
 
 app.use(express.json());
 
-app.use(arjectMiddleware)
+// app.use(arjectMiddleware);
 
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth',authRoutes);
