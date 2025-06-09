@@ -1,15 +1,19 @@
-import  express  from"express";
-import  bcrypt  from"bcryptjs";
-import  jwt  from"jsonwebtoken";
-import  prisma  from"../prisma/client.js"; 
-import  { login, signup }  from"../controllers/auth.controller.js";
+import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import prisma from "../prisma/client.js";
+import { signUp, signIn, signOut, checkAuth } from "../controllers/auth.controller.js";
+import { authenticateToken } from '../middlewares/auth.middleware.js';
 const authRouter = express.Router();
 
-// Signup Route
-authRouter.post("/signup",signup)
 
-// Login Route
-authRouter.post("/login", login);
+// * Public routes
+authRouter.post('/signup', signUp);
+authRouter.post('/signin', signIn);
+authRouter.post('/signout', signOut);
+
+// *  Protected route to check authentication status
+authRouter.get('/me', checkAuth);
 
 export default authRouter;
 
