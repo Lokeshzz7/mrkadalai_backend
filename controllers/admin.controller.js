@@ -49,7 +49,7 @@ export const getOutlets = async(req , res , next) => {
 
 export const outletAddStaff = async(req , res , next) => {
     try {
-    const { email, password, fullName, phone, outletId ,permissions = [] } = req.body;
+    const { email, password, fullName, phone, outletId ,staffRole,permissions = [] } = req.body;
 
    
     if (!email || !password || !fullName || !phone) {
@@ -71,6 +71,7 @@ export const outletAddStaff = async(req , res , next) => {
         password: hashedPassword,
         outletId,
         role: 'STAFF',
+        staffRole,
         staffInfo: {
           create: {
             fullName,

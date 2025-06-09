@@ -1,4 +1,7 @@
 -- CreateEnum
+CREATE TYPE "Role" AS ENUM ('CUSTOMER', 'STAFF', 'ADMIN');
+
+-- CreateEnum
 CREATE TYPE "PermissionType" AS ENUM ('BILLING', 'PRODUCT_INSIGHTS', 'REPORTS', 'INVENTORY');
 
 -- CreateEnum
@@ -9,6 +12,9 @@ CREATE TYPE "OrderStatus" AS ENUM ('PENDING', 'CONFIRMED', 'DELIVERED', 'CANCELL
 
 -- CreateEnum
 CREATE TYPE "Priority" AS ENUM ('LOW', 'MEDIUM', 'HIGH');
+
+-- CreateEnum
+CREATE TYPE "Category" AS ENUM ('Meals', 'Starters', 'Desserts', 'Beverages');
 
 -- CreateEnum
 CREATE TYPE "TicketStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'CLOSED');
@@ -28,11 +34,24 @@ CREATE TABLE "Outlet" (
 );
 
 -- CreateTable
+CREATE TABLE "User" (
+    "id" SERIAL NOT NULL,
+    "email" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "role" "Role" NOT NULL DEFAULT 'CUSTOMER',
+    "outletId" INTEGER,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "StaffDetails" (
     "id" SERIAL NOT NULL,
     "userId" INTEGER NOT NULL,
     "fullName" TEXT NOT NULL,
     "phone" TEXT NOT NULL,
+    "staffRole" TEXT NOT NULL DEFAULT 'Staff',
 
     CONSTRAINT "StaffDetails_pkey" PRIMARY KEY ("id")
 );
@@ -58,23 +77,14 @@ CREATE TABLE "CustomerDetails" (
 );
 
 -- CreateTable
-CREATE TABLE "Category" (
-    "id" SERIAL NOT NULL,
-    "name" TEXT NOT NULL,
-    "description" TEXT,
-
-    CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "Product" (
     "id" SERIAL NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
     "price" DOUBLE PRECISION NOT NULL,
     "imageUrl" TEXT,
-    "categoryId" INTEGER NOT NULL,
     "outletId" INTEGER NOT NULL,
+    "category" "Category" NOT NULL,
 
     CONSTRAINT "Product_pkey" PRIMARY KEY ("id")
 );
@@ -198,6 +208,12 @@ CREATE TABLE "CouponUsage" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Outlet_email_key" ON "Outlet"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "StaffDetails_userId_key" ON "StaffDetails"("userId");
 
 -- CreateIndex
@@ -223,9 +239,6 @@ ALTER TABLE "StaffPermission" ADD CONSTRAINT "StaffPermission_staffId_fkey" FORE
 
 -- AddForeignKey
 ALTER TABLE "CustomerDetails" ADD CONSTRAINT "CustomerDetails_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Product" ADD CONSTRAINT "Product_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Product" ADD CONSTRAINT "Product_outletId_fkey" FOREIGN KEY ("outletId") REFERENCES "Outlet"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

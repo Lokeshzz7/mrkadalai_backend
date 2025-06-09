@@ -15,7 +15,6 @@ adminRouter.get('/dashboard/', authenticate, authorize('ADMIN'), (req, res) => {
 //Outlet Management
 
 adminRouter.post('/add-outlets/', authenticate, authorize('ADMIN'),addOutlets );
-
 adminRouter.get('/get-outlets/', authenticate, authorize('ADMIN'), getOutlets);
 
 //Staff Management

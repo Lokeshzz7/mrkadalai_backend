@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
 
 export const signup = async( req  , res , next) => {
-    const { email, password, role, outletId } = req.body;
+    const { email, password, role, outletId} = req.body;
 
   try {
    
@@ -69,5 +69,6 @@ export const login = async(req , res , next) => {
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Internal server error" });
+    
   }
 }

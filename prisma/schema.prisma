@@ -88,6 +88,7 @@ model StaffDetails {
   userId   Int    @unique
   fullName String
   phone    String
+  staffRole String @default("Staff")
   permissions StaffPermission[]
   user        User              @relation(fields: [userId], references: [id])
 }
