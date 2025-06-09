@@ -23,7 +23,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-app.use(arjectMiddleware)
+// app.use(arjectMiddleware);
 
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
