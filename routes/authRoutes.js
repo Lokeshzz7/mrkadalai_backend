@@ -13,7 +13,7 @@ authRouter.post('/signin', signIn);
 authRouter.post('/signout', signOut);
 
 // *  Protected route to check authentication status
-authRouter.get('/me', checkAuth);
+authRouter.get('/me', authenticateToken, checkAuth);
 
 export default authRouter;
 

@@ -26,7 +26,7 @@ export const authenticateToken = async (req, res, next) => {
             return res.status(401).json({ message: 'Invalid token. User not found.' });
         }
 
-        req.user = user; // attach to req for downstream access
+        req.user = user; 
         next();
     } catch (error) {
         if (error.name === 'JsonWebTokenError') {
