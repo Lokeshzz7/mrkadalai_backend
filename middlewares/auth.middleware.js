@@ -41,7 +41,7 @@ export const authenticateToken = async (req, res, next) => {
 
 
 // TODO Role-based authorization need to be added for chekcing the manager and the satff 
-// ! This is not being used
+
 export const authorizeRoles = (...roles) => {
     return (req, res, next) => {
         if (!req.user) {

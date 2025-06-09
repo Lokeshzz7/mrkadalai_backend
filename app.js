@@ -2,7 +2,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
 import express from "express";
-import pool from "./db/db.js";
 const app = express();
 const PORT = process.env.PORT || 5500;
 
@@ -10,10 +9,9 @@ import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/admin.js';
 import errorMiddleware from './middlewares/error.middleware.js';
 import arjectMiddleware from './middlewares/arcjet.middleware.js';
-
 import cors from 'cors';
-
 import cookieParser from 'cookie-parser';
+
 
 app.use(cookieParser());
 
