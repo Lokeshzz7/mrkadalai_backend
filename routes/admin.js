@@ -1,5 +1,5 @@
 import express  from'express';
-import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct} from '../controllers/admin.controller.js';
+import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts} from '../controllers/admin.controller.js';
 import { authenticateToken,authorizeRoles } from '../middlewares/auth.middleware.js';
 
 const adminRouter = express.Router();
@@ -20,6 +20,8 @@ adminRouter.post('/outlets/permissions/',authenticateToken,authorizeRoles('ADMIN
 //Inventory management
 
 //Product  management
+adminRouter.get('/outlets/get-products/:outletId',authenticateToken,authorizeRoles('ADMIN'),getProducts);
+
 adminRouter.post('/outlets/add-product/',authenticateToken,authorizeRoles('ADMIN'),addProduct);
 
 adminRouter.delete('/outlets/delete-product/:id',authenticateToken,authorizeRoles('ADMIN'),deleteProduct);
@@ -28,7 +30,14 @@ adminRouter.delete('/outlets/delete-product/:id',authenticateToken,authorizeRole
 adminRouter.get('/outlets/:outletId/orders/', authenticateToken, authorizeRoles('ADMIN'),outletTotalOrders);
 
 //Staff Management
-adminRouter.get('/get-staffs/:outletId', authenticateToken, authorizeRoles('ADMIN'),getOutletStaff);
+adminRouter.get('/outlets/get-staffs/:outletId', authenticateToken, authorizeRoles('ADMIN'),getOutletStaff);
 
+//Inventory management
+adminRouter.get('/outlets/get-stocks/:outletId',authenticateToken,authorizeRoles('ADMIN'),getStocks);
 
+adminRouter.post('/outlets/add-stocks/',authenticateToken,authorizeRoles('ADMIN'),addStock);
+
+adminRouter.post('/outlets/deduct-stocks/',authenticateToken,authorizeRoles('ADMIN'),deductStock);
+
+adminRouter.post('/outlets/get-stock-history',authenticateToken,authorizeRoles('ADMIN'),stockHistory);
 export default adminRouter;

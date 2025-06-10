@@ -52,6 +52,12 @@ enum TicketStatus {
   CLOSED
 }
 
+enum StockAction {
+  ADD
+  REMOVE
+  UPDATE
+}
+
 model Outlet {
   id        Int      @id @default(autoincrement())
   name      String
@@ -67,6 +73,8 @@ model Outlet {
   expenses    Expense[]
   users       User[]
   orders      Order[]
+
+  StockHistory StockHistory[]
 }
 
 model User {
@@ -145,20 +153,16 @@ model Inventory {
 model StockHistory {
   id         Int       @id @default(autoincrement())
   productId  Int
+  outletId   Int
   quantity   Int       // Quantity changed (positive or negative)
   action     StockAction
   timestamp  DateTime  @default(now())
-  note       String?   // Optional description/reason
-
-  product Product @relation(fields: [productId], references: [id])
   
+  product Product @relation(fields: [productId], references: [id])
+  outlet  Outlet  @relation(fields: [outletId], references: [id])
 }
 
-enum StockAction {
-  ADD
-  REMOVE
-  UPDATE
-}
+
 
 
 // ===================== ORDER + ITEMS ======================
