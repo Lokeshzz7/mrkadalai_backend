@@ -4,20 +4,24 @@ import prisma from '../prisma/client.js';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
 
 export const signUp = async (req, res, next) => {
-  const { name, email, password, role, outletId,phone } = req.body;
+  const { name, email, password, role, outletId, phone, yearOfStudy } = req.body;
 
   try {
     if (!name || !email || !password || !role || !phone) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+    if (role === "CUSTOMER" && !yearOfStudy) {
+      return res.status(400).json({ message: 'yearOfStudy is required for customer' });
     }
 
     if (role !== "ADMIN" && !outletId) {
-      return res.status(400).json({ message: "Provide outletId for non-admin users" });
+      return res.status(400).json({ message: 'Provide outletId for non-admin users' });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -30,13 +34,37 @@ export const signUp = async (req, res, next) => {
         role,
         phone,
         outletId: role !== 'ADMIN' ? outletId : null,
+        customerInfo: role === "CUSTOMER" ? {
+          create: {
+            yearOfStudy,
+            wallet: {
+              create: {
+                balance: 0,
+                totalRecharged: 0,
+                totalUsed: 0
+              }
+            }
+          }
+        } : undefined
       },
       select: {
         id: true,
         name: true,
         email: true,
         role: true,
-        outletId: true
+        outletId: true,
+        customerInfo: {
+          select: {
+            id: true,
+            yearOfStudy: true,
+            wallet: {
+              select: {
+                id: true,
+                balance: true
+              }
+            }
+          }
+        }
       }
     });
 
@@ -48,18 +76,20 @@ export const signUp = async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      maxAge: 1000 * 60 * 60 * 24 * 7,
     });
 
     res.status(201).json({
       message: 'User created successfully',
       user,
     });
+
   } catch (error) {
     console.error("Signup error:", error);
     next(error);
   }
 };
+
 
 export const signIn = async (req, res, next) => {
   const { email, password } = req.body;
