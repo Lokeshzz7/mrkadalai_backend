@@ -549,21 +549,52 @@ export const addExpense = async (req, res, next) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+export const getExpenses = async (req, res, next) => {
+  const { outletId } = req.params;
 
-export const getExpense = async(req,res,next)=>{
-  const {outletId} = req.body;
+  try {
+    const outletIdNum = Number(outletId);
 
-  if(!outletId) return res.status(400).json({message:"Provide outletID"});
-  try{
-    const expenses = await prisma.expense.findMany({ where:{outletId }});
-    if(!expenses) return res.status(200).json({message:"No expenses found for Outlet"});
-    return res.status.json({"expenses":expenses.json()});
-    
-  }catch(err){
-    console.error(err);
-    res.status(400).json({message:"Internal Server Error"});
+    const twoWeeksAgo = new Date();
+    twoWeeksAgo.setDate(twoWeeksAgo.getDate() - 14);
+
+    // Fetch expenses
+    const expenses = await prisma.expense.findMany({
+      where: {
+        outletId: outletIdNum,
+        expenseDate: {
+          gte: twoWeeksAgo,
+          lte: new Date(), 
+        },
+      },
+      orderBy: {
+        expenseDate: 'desc',
+      },
+    });
+
+    // Format response
+    const formattedExpenses = expenses.map(expense => ({
+      id: expense.id,
+      outletId: expense.outletId,
+      description: expense.description,
+      category: expense.category,
+      amount: expense.amount,
+      method: expense.method,
+      paidTo: expense.paidTo,
+      expenseDate: expense.expenseDate,
+      createdAt: expense.createdAt,
+    }));
+
+    // Return response
+    res.status(200).json({
+      message: expenses.length > 0 ? 'Expenses retrieved successfully' : 'No expenses found for the last 2 weeks',
+      expenses: formattedExpenses,
+    });
+  } catch (error) {
+    console.error('Error fetching expenses:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-}
+};
 
 export const getExpenseByDate = async(req,res,next)=>{
   
