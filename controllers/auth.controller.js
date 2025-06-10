@@ -4,10 +4,10 @@ import prisma from '../prisma/client.js';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
 
 export const signUp = async (req, res, next) => {
-  const { name, email, password, role, outletId } = req.body;
+  const { name, email, password, role, outletId,phone } = req.body;
 
   try {
-    if (!name || !email || !password || !role) {
+    if (!name || !email || !password || !role || !phone) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
@@ -28,6 +28,7 @@ export const signUp = async (req, res, next) => {
         email,
         password: hashedPassword,
         role,
+        phone,
         outletId: role !== 'ADMIN' ? outletId : null,
       },
       select: {
@@ -118,7 +119,6 @@ export const signOut = async (req, res, next) => {
     next(error);
   }
 };
-
 
 export const checkAuth = async (req, res) => {
   try {

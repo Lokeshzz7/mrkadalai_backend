@@ -13,6 +13,7 @@ adminRouter.get('/dashboard/', authenticateToken, authorizeRoles('ADMIN'), (req,
 adminRouter.post('/add-outlets/', authenticateToken, authorizeRoles('ADMIN'),addOutlets );
 adminRouter.get('/get-outlets/', authenticateToken, authorizeRoles('ADMIN'), getOutlets);
 
+
 //Staff Management
 adminRouter.post('/outlets/add-staff/', authenticateToken, authorizeRoles('ADMIN'),outletAddStaff);
 adminRouter.post('/outlets/permissions/',authenticateToken,authorizeRoles('ADMIN'), outletStaffPermission);
