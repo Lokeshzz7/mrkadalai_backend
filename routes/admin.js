@@ -1,5 +1,5 @@
 import express  from'express';
-import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders} from '../controllers/admin.controller.js';
+import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct} from '../controllers/admin.controller.js';
 import { authenticateToken,authorizeRoles } from '../middlewares/auth.middleware.js';
 
 const adminRouter = express.Router();
@@ -15,12 +15,14 @@ adminRouter.get('/get-outlets/', authenticateToken, authorizeRoles('ADMIN'), get
 
 //Staff Management
 adminRouter.post('/outlets/add-staff/', authenticateToken, authorizeRoles('ADMIN'),outletAddStaff);
-adminRouter.post('/outlets/permissions/:staffId/',authenticateToken,authorizeRoles('ADMIN'), outletStaffPermission);
+adminRouter.post('/outlets/permissions/',authenticateToken,authorizeRoles('ADMIN'), outletStaffPermission);
 
 //Inventory management
 
-//App management
+//Product  management
+adminRouter.post('/outlets/add-product/',authenticateToken,authorizeRoles('ADMIN'),addProduct);
 
+adminRouter.delete('/outlets/delete-product/:id',authenticateToken,authorizeRoles('ADMIN'),deleteProduct);
 
 //Order management
 adminRouter.get('/outlets/:outletId/orders/', authenticateToken, authorizeRoles('ADMIN'),outletTotalOrders);

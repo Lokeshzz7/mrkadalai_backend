@@ -72,8 +72,10 @@ model Outlet {
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
+  name      String
   password  String
   role      Role     @default(CUSTOMER)
+  phone     String?
   outletId  Int? // STAFF & CUSTOMER only
   createdAt DateTime @default(now())
   outlet       Outlet?          @relation(fields: [outletId], references: [id])
@@ -86,8 +88,6 @@ model User {
 model StaffDetails {
   id       Int    @id @default(autoincrement())
   userId   Int    @unique
-  fullName String
-  phone    String
   staffRole String @default("Staff")
   permissions StaffPermission[]
   user        User              @relation(fields: [userId], references: [id])
@@ -108,8 +108,6 @@ model CustomerDetails {
   id          Int    @id @default(autoincrement())
   userId      Int    @unique
   yearOfStudy Int
-  phone       String
-
   wallet  Wallet?
   orders  Order[]
   tickets Ticket[]
@@ -121,7 +119,7 @@ model CustomerDetails {
 
 model Product {
   id          Int     @id @default(autoincrement())
-  name        String
+  name        String  @unique
   description String?
   price       Float
   imageUrl    String?
@@ -129,7 +127,9 @@ model Product {
   category   Category    
   outlet     Outlet      @relation(fields: [outletId], references: [id])
   inventory  Inventory?
-  orderItems OrderItem[]
+  orderItems  OrderItem[] @relation("ProductToOrderItems") @ignore
+
+  StockHistory StockHistory[]
 }
 
 model Inventory {
@@ -137,10 +137,29 @@ model Inventory {
   productId Int @unique
   outletId  Int
   quantity  Int
-
+  threshold Int
   product Product @relation(fields: [productId], references: [id])
   outlet  Outlet  @relation(fields: [outletId], references: [id])
 }
+
+model StockHistory {
+  id         Int       @id @default(autoincrement())
+  productId  Int
+  quantity   Int       // Quantity changed (positive or negative)
+  action     StockAction
+  timestamp  DateTime  @default(now())
+  note       String?   // Optional description/reason
+
+  product Product @relation(fields: [productId], references: [id])
+  
+}
+
+enum StockAction {
+  ADD
+  REMOVE
+  UPDATE
+}
+
 
 // ===================== ORDER + ITEMS ======================
 
@@ -166,7 +185,7 @@ model OrderItem {
   unitPrice Float
 
   order   Order   @relation(fields: [orderId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
+  product Product @relation(name: "ProductToOrderItems", fields: [productId], references: [id])
 }
 
 // ===================== WALLET & TRANSACTIONS ======================
