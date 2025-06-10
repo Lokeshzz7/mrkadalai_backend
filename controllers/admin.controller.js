@@ -3,12 +3,14 @@ import prisma from '../prisma/client.js';
 
 //Outlets management
 export const addOutlets = async (req, res, next) => {
-  const { name, address, phone, email} = req.body;
+  const { name, address, phone, email,staffCount} = req.body;
 
   try {
     if (!name || !address || !email || !phone ||!staffCount) {
       return res.status(400).json({ message: "Provide all outlet details" });
     }
+
+    const intStaffCount = parseInt(staffCount);
 
     const existingOutlet = await prisma.outlet.findUnique({
       where: { email }
@@ -24,7 +26,7 @@ export const addOutlets = async (req, res, next) => {
         address,
         phone,
         email,
-        staffCount
+        staffCount : intStaffCount
       }
     });
 
