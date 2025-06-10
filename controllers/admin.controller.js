@@ -3,7 +3,7 @@ import prisma from '../prisma/client.js';
 
 //Outlets management
 export const addOutlets = async (req, res, next) => {
-  const { name, address, phone, email,staffCount } = req.body;
+  const { name, address, phone, email} = req.body;
 
   try {
     if (!name || !address || !email || !phone ||!staffCount) {
@@ -17,7 +17,6 @@ export const addOutlets = async (req, res, next) => {
     if (existingOutlet) {
       return res.status(400).json({ message: "Outlet already exists" });
     }
-
 
     const outlet = await prisma.outlet.create({
       data: {
@@ -39,7 +38,7 @@ export const removeOutlets = async(req,res,next)=>{
   const outletId = parseInt(req.params.outletId);
   if(!outletId) return res.status(400).json({message:"Provide OutletId to delete"});
   try{
-    const deleted = await prisma.outlet.delete({where:{outletId}}); 
+    const deleted = await prisma.outlet.delete({where:{id:outletId}}); 
     res.status(200).json({message:"Deleted Outlet"});
   }
   catch(err){
@@ -631,7 +630,11 @@ export const getExpenseByDate = async (req, res, next) => {
 
 
 export const getCustomersWithWallet = async (req, res, next) => {
+<<<<<<< Updated upstream
   const { outletId } = req.params;
+=======
+  const outletId  = parseInt(req.params.outletId);
+>>>>>>> Stashed changes
 
   if (!outletId) {
     return res.status(400).json({ message: "Provide outletId" });
@@ -692,7 +695,11 @@ export const getCustomersWithWallet = async (req, res, next) => {
 };
 
 export const getRechargeHistoryByOutlet = async (req, res, next) => {
+<<<<<<< Updated upstream
   const { outletId } = req.params;
+=======
+  const outletId  = parseInt(req.params.outletId);
+>>>>>>> Stashed changes
 
   if (!outletId) {
     return res.status(400).json({ message: "Provide outletId" });

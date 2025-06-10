@@ -62,7 +62,7 @@ model Outlet {
   id        Int      @id @default(autoincrement())
   name      String
   address   String
-  phone     String
+  phone     String?
   email     String   @unique
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -277,4 +277,8 @@ model CouponUsage {
   usedAt   DateTime @default(now())
 
   coupon Coupon @relation(fields: [couponId], references: [id])
+}
+
+model Cart{
+  id Int @id @default(autoincrement())
 }

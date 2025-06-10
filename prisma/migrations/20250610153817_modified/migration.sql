@@ -1,0 +1,6 @@
+-- AlterTable
+ALTER TABLE "Outlet" ALTER COLUMN "phone" DROP NOT NULL,
+ALTER COLUMN "phone" SET DATA TYPE TEXT;
+
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "phone" SET DATA TYPE TEXT;
