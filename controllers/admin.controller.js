@@ -485,3 +485,56 @@ export const stockHistory = async (req, res, next) => {
   }
 };
 
+export const addExpense = async (req, res, next) => {
+  const { outletId, description, category, amount, method, paidTo, expenseDate } = req.body;
+
+  try {
+    if (!outletId || !description || !category || !amount || !method || !paidTo || !expenseDate) {
+      return res.status(400).json({ message: 'Please provide all required fields' });
+    }
+
+    const validMethods = ['UPI', 'CARD', 'CASH', 'WALLET'];
+    if (!validMethods.includes(method)) {
+      return res.status(400).json({ message: `Invalid payment method. Must be one of: ${validMethods.join(', ')}` });
+    }
+
+    if (typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ message: 'Amount must be a positive number' });
+    }
+
+    const parsedDate = new Date(expenseDate);
+    if (isNaN(parsedDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid expenseDate: Must be a valid date' });
+    }
+
+    const expense = await prisma.expense.create({
+      data: {
+        outletId: Number(outletId),
+        description,
+        category,
+        amount,
+        method,
+        paidTo,
+        expenseDate: parsedDate,
+      },
+    });
+
+    res.status(201).json({
+      message: 'Expense created successfully',
+      expense: {
+        id: expense.id,
+        outletId: expense.outletId,
+        description: expense.description,
+        category: expense.category,
+        amount: expense.amount,
+        method: expense.method,
+        paidTo: expense.paidTo,
+        expenseDate: expense.expenseDate,
+        createdAt: expense.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating expense:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};

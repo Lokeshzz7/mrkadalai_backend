@@ -1,5 +1,5 @@
 import express  from'express';
-import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts} from '../controllers/admin.controller.js';
+import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts, addExpense} from '../controllers/admin.controller.js';
 import { authenticateToken,authorizeRoles } from '../middlewares/auth.middleware.js';
 
 const adminRouter = express.Router();
@@ -40,4 +40,8 @@ adminRouter.post('/outlets/add-stocks/',authenticateToken,authorizeRoles('ADMIN'
 adminRouter.post('/outlets/deduct-stocks/',authenticateToken,authorizeRoles('ADMIN'),deductStock);
 
 adminRouter.post('/outlets/get-stock-history',authenticateToken,authorizeRoles('ADMIN'),stockHistory);
+
+adminRouter.post('/outlets/add-expenses/',authenticateToken,authorizeRoles('ADMIN'),addExpense);
+
+
 export default adminRouter;
