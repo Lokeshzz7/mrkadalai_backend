@@ -630,11 +630,7 @@ export const getExpenseByDate = async (req, res, next) => {
 
 
 export const getCustomersWithWallet = async (req, res, next) => {
-<<<<<<< Updated upstream
-  const { outletId } = req.params;
-=======
   const outletId  = parseInt(req.params.outletId);
->>>>>>> Stashed changes
 
   if (!outletId) {
     return res.status(400).json({ message: "Provide outletId" });
@@ -695,11 +691,7 @@ export const getCustomersWithWallet = async (req, res, next) => {
 };
 
 export const getRechargeHistoryByOutlet = async (req, res, next) => {
-<<<<<<< Updated upstream
-  const { outletId } = req.params;
-=======
   const outletId  = parseInt(req.params.outletId);
->>>>>>> Stashed changes
 
   if (!outletId) {
     return res.status(400).json({ message: "Provide outletId" });
