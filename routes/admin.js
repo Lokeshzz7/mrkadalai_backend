@@ -1,5 +1,5 @@
 import express  from'express';
-import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts, addExpense, removeOutlets, getExpenses} from '../controllers/admin.controller.js';
+import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts, addExpense, removeOutlets, getExpenses, getCustomersWithWallet, getRechargeHistoryByOutlet, getOrdersPaidViaWallet} from '../controllers/admin.controller.js';
 import { authenticateToken,authorizeRoles } from '../middlewares/auth.middleware.js';
 
 const adminRouter = express.Router();
@@ -44,9 +44,17 @@ adminRouter.post('/outlets/deduct-stocks/',authenticateToken,authorizeRoles('ADM
 
 adminRouter.post('/outlets/get-stock-history',authenticateToken,authorizeRoles('ADMIN'),stockHistory);
 
+//Expense Management
 adminRouter.post('/outlets/add-expenses/',authenticateToken,authorizeRoles('ADMIN'),addExpense);
 
-adminRouter.get('/outlets/get-expenses/:outletId',authenticateToken,authorizeRoles('ADMIN'),getExpenses);
+adminRouter.get('/outlets/get-expenses/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getExpenses);
 
+//Wallet Management
+
+adminRouter.get('/outlets/wallet-history/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getCustomersWithWallet);
+
+adminRouter.get('/outlets/recharge-history/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getRechargeHistoryByOutlet);
+
+adminRouter.get('/outlets/paid-wallet/',authenticateToken,authorizeRoles('ADMIN'),getOrdersPaidViaWallet);
 
 export default adminRouter;
