@@ -1,6 +1,7 @@
 // app.js
 import dotenv from 'dotenv';
 dotenv.config();
+import pool from './db/db.js';
 import express from "express";
 const app = express();
 const PORT = process.env.PORT || 5500;
@@ -32,7 +33,8 @@ app.get('/', (req, res) => {
   res.send('Server is running...');
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async() => {
   console.log(`Server listening on http://localhost:${PORT}`);
+  await pool;
 });
 

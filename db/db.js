@@ -1,28 +1,35 @@
-// db/db.js
 import { Pool } from "pg";
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
 import { DB_URI } from "../config/env.js";
+import fs from 'fs';
+import path from 'path';
+
 dotenv.config();
 
 if (!DB_URI) {
   throw new Error("Missing DATABASE_URL in environment");
 }
 
-const isNeon = DB_URI.includes("neon.tech");
+// Load the AWS RDS CA certificate
+const caCertPath = path.resolve('eu-north-1-bundle.pem'); // Adjust path if needed
+const caCert = fs.readFileSync(caCertPath).toString();
 
 const pool = new Pool({
   connectionString: DB_URI,
-  ssl: isNeon
-    ? { rejectUnauthorized: false } 
-    : false,      
+  ssl: {
+    rejectUnauthorized: true, // Enforce certificate validation
+    ca: caCert, // AWS RDS CA certificate
+  },
   keepAlive: true,
-  idleTimeoutMillis: 30000,      
-  connectionTimeoutMillis: 10000, 
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
+
 pool.on("error", (err, client) => {
-    console.error("Unexpected error on idle client:", err.stack);
-     process.exit(-1);  // crash & restart
+  console.error("Unexpected error on idle client:", err.stack);
+  process.exit(-1); // Crash & restart
 });
+
 pool
   .connect()
   .then(() => console.log("Database connected"))
