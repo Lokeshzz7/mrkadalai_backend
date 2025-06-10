@@ -19,6 +19,9 @@ CREATE TYPE "Category" AS ENUM ('Meals', 'Starters', 'Desserts', 'Beverages');
 -- CreateEnum
 CREATE TYPE "TicketStatus" AS ENUM ('OPEN', 'IN_PROGRESS', 'CLOSED');
 
+-- CreateEnum
+CREATE TYPE "StockAction" AS ENUM ('ADD', 'REMOVE', 'UPDATE');
+
 -- CreateTable
 CREATE TABLE "Outlet" (
     "id" SERIAL NOT NULL,
@@ -37,8 +40,10 @@ CREATE TABLE "Outlet" (
 CREATE TABLE "User" (
     "id" SERIAL NOT NULL,
     "email" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "role" "Role" NOT NULL DEFAULT 'CUSTOMER',
+    "phone" TEXT,
     "outletId" INTEGER,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -49,8 +54,6 @@ CREATE TABLE "User" (
 CREATE TABLE "StaffDetails" (
     "id" SERIAL NOT NULL,
     "userId" INTEGER NOT NULL,
-    "fullName" TEXT NOT NULL,
-    "phone" TEXT NOT NULL,
     "staffRole" TEXT NOT NULL DEFAULT 'Staff',
 
     CONSTRAINT "StaffDetails_pkey" PRIMARY KEY ("id")
@@ -71,7 +74,6 @@ CREATE TABLE "CustomerDetails" (
     "id" SERIAL NOT NULL,
     "userId" INTEGER NOT NULL,
     "yearOfStudy" INTEGER NOT NULL,
-    "phone" TEXT NOT NULL,
 
     CONSTRAINT "CustomerDetails_pkey" PRIMARY KEY ("id")
 );
@@ -95,8 +97,21 @@ CREATE TABLE "Inventory" (
     "productId" INTEGER NOT NULL,
     "outletId" INTEGER NOT NULL,
     "quantity" INTEGER NOT NULL,
+    "threshold" INTEGER NOT NULL,
 
     CONSTRAINT "Inventory_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "StockHistory" (
+    "id" SERIAL NOT NULL,
+    "productId" INTEGER NOT NULL,
+    "outletId" INTEGER NOT NULL,
+    "quantity" INTEGER NOT NULL,
+    "action" "StockAction" NOT NULL,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "StockHistory_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -220,6 +235,9 @@ CREATE UNIQUE INDEX "StaffDetails_userId_key" ON "StaffDetails"("userId");
 CREATE UNIQUE INDEX "CustomerDetails_userId_key" ON "CustomerDetails"("userId");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Product_name_key" ON "Product"("name");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Inventory_productId_key" ON "Inventory"("productId");
 
 -- CreateIndex
@@ -248,6 +266,12 @@ ALTER TABLE "Inventory" ADD CONSTRAINT "Inventory_productId_fkey" FOREIGN KEY ("
 
 -- AddForeignKey
 ALTER TABLE "Inventory" ADD CONSTRAINT "Inventory_outletId_fkey" FOREIGN KEY ("outletId") REFERENCES "Outlet"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StockHistory" ADD CONSTRAINT "StockHistory_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "StockHistory" ADD CONSTRAINT "StockHistory_outletId_fkey" FOREIGN KEY ("outletId") REFERENCES "Outlet"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_customerId_fkey" FOREIGN KEY ("customerId") REFERENCES "CustomerDetails"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
