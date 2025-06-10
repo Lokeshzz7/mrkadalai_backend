@@ -34,7 +34,18 @@ export const addOutlets = async (req, res, next) => {
     res.status(500).json({ message: "Internal server error" });
   }
 }
-
+export const removeOutlets = async(req,res,next)=>{
+  const outletId = parseInt(req.params.outletId);
+  if(!outletId) return res.status(400).json({message:"Provide OutletId to delete"});
+  try{
+    const deleted = await prisma.outlet.delete({where:{outletId}}); 
+    res.status(200).json({message:"Deleted Outlet"});
+  }
+  catch(err){
+    console.error(err);
+    res.status(400).json({message:"Internal Server Error"});
+  }
+}
 export const getOutlets = async (req, res, next) => {
   try {
     const outlets = await prisma.outlet.findMany();
@@ -538,3 +549,22 @@ export const addExpense = async (req, res, next) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
+export const getExpense = async(req,res,next)=>{
+  const {outletId} = req.body;
+
+  if(!outletId) return res.status(400).json({message:"Provide outletID"});
+  try{
+    const expenses = await prisma.expense.findMany({ where:{outletId }});
+    if(!expenses) return res.status(200).json({message:"No expenses found for Outlet"});
+    return res.status.json({"expenses":expenses.json()});
+    
+  }catch(err){
+    console.error(err);
+    res.status(400).json({message:"Internal Server Error"});
+  }
+}
+
+export const getExpenseByDate = async(req,res,next)=>{
+  
+}
