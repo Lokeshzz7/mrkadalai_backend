@@ -631,7 +631,7 @@ export const getExpenseByDate = async (req, res, next) => {
 
 
 export const getCustomersWithWallet = async (req, res, next) => {
-  const { outletId } = req.params.outletId;
+  const { outletId } = req.params;
 
   if (!outletId) {
     return res.status(400).json({ message: "Provide outletId" });
@@ -692,7 +692,7 @@ export const getCustomersWithWallet = async (req, res, next) => {
 };
 
 export const getRechargeHistoryByOutlet = async (req, res, next) => {
-  const { outletId } = req.params.outletId;
+  const { outletId } = req.params;
 
   if (!outletId) {
     return res.status(400).json({ message: "Provide outletId" });
