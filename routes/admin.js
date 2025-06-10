@@ -1,5 +1,5 @@
 import express  from'express';
-import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts, addExpense} from '../controllers/admin.controller.js';
+import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts, addExpense, removeOutlets} from '../controllers/admin.controller.js';
 import { authenticateToken,authorizeRoles } from '../middlewares/auth.middleware.js';
 
 const adminRouter = express.Router();
@@ -10,9 +10,11 @@ adminRouter.get('/dashboard/', authenticateToken, authorizeRoles('ADMIN'), (req,
 
 //Outlet Management
 
-adminRouter.post('/add-outlets/', authenticateToken, authorizeRoles('ADMIN'),addOutlets );
+adminRouter.post('/add-outlet/', authenticateToken, authorizeRoles('ADMIN'),addOutlets );
+
 adminRouter.get('/get-outlets/', authenticateToken, authorizeRoles('ADMIN'), getOutlets);
 
+adminRouter.delete('/remove-outlet/:outletId/',authenticateToken,authorizeRoles('ADMIN'),removeOutlets);
 
 //Staff Management
 adminRouter.post('/outlets/add-staff/', authenticateToken, authorizeRoles('ADMIN'),outletAddStaff);
