@@ -3,10 +3,10 @@ import prisma from '../prisma/client.js';
 
 //Outlets management
 export const addOutlets = async (req, res, next) => {
-  const { name, address, phone, email } = req.body;
+  const { name, address, phone, email,staffCount } = req.body;
 
   try {
-    if (!name || !address || !email || !phone) {
+    if (!name || !address || !email || !phone ||!staffCount) {
       return res.status(400).json({ message: "Provide all outlet details" });
     }
 
@@ -24,7 +24,8 @@ export const addOutlets = async (req, res, next) => {
         name,
         address,
         phone,
-        email
+        email,
+        staffCount
       }
     });
 
@@ -497,7 +498,7 @@ export const stockHistory = async (req, res, next) => {
 };
 
 export const addExpense = async (req, res, next) => {
-  const { outletId, description, category, amount, method, paidTo, expenseDate } = req.body;
+  const { outletId, description, category, amount, method, paidTo, expenseDate} = req.body;
 
   try {
     if (!outletId || !description || !category || !amount || !method || !paidTo || !expenseDate) {
@@ -549,6 +550,7 @@ export const addExpense = async (req, res, next) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 export const getExpenses = async (req, res, next) => {
   const { outletId } = req.params;
 
@@ -572,7 +574,7 @@ export const getExpenses = async (req, res, next) => {
       },
     });
 
-    // Format response
+    
     const formattedExpenses = expenses.map(expense => ({
       id: expense.id,
       outletId: expense.outletId,
@@ -585,7 +587,6 @@ export const getExpenses = async (req, res, next) => {
       createdAt: expense.createdAt,
     }));
 
-    // Return response
     res.status(200).json({
       message: expenses.length > 0 ? 'Expenses retrieved successfully' : 'No expenses found for the last 2 weeks',
       expenses: formattedExpenses,
@@ -596,6 +597,40 @@ export const getExpenses = async (req, res, next) => {
   }
 };
 
-export const getExpenseByDate = async(req,res,next)=>{
-  
+export const getExpenseByDate = async (req, res, next) => {
+  const { outletId, from, to } = req.body;
+
+  if (!outletId || !from || !to) {
+    return res.status(400).json({ message: "Provide all the details" });
+  }
+
+  try {
+    const expenses = await prisma.expense.findMany({
+      where: {
+        outletId: parseInt(outletId),
+        expenseDate: {
+          gte: new Date(from),
+          lte: new Date(to)
+        }
+      },
+      orderBy: {
+        expenseDate: 'desc'
+      }
+    });
+
+    return res.status(200).json({
+      message: "Expenses fetched successfully",
+      count: expenses.length,
+      expenses
+    });
+  } catch (err) {
+    console.error("Error fetching expenses:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+export const walletHistory = async(req,res,next)=>{
+    const {outletId} = req.body;
+
 }
