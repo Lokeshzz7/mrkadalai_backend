@@ -1,5 +1,5 @@
 import express  from'express';
-import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts, addExpense, removeOutlets, getExpenses, getCustomersWithWallet, getRechargeHistoryByOutlet, getOrdersPaidViaWallet,getOutletCustomers, getTickets, ticketClose} from '../controllers/admin.controller.js';
+import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts, addExpense, removeOutlets, getExpenses, getCustomersWithWallet, getRechargeHistoryByOutlet, getOrdersPaidViaWallet,getOutletCustomers, getTickets, ticketClose ,getStaffById, outletUpdateStaff, outletDeleteStaff} from '../controllers/admin.controller.js';
 import { authenticateToken,authorizeRoles } from '../middlewares/auth.middleware.js';
 
 const adminRouter = express.Router();
@@ -19,6 +19,11 @@ adminRouter.delete('/remove-outlet/:outletId/',authenticateToken,authorizeRoles(
 //Staff Management
 adminRouter.post('/outlets/add-staff/', authenticateToken, authorizeRoles('ADMIN'),outletAddStaff);
 adminRouter.post('/outlets/permissions/',authenticateToken,authorizeRoles('ADMIN'), outletStaffPermission);
+adminRouter.get('/outlets/get-staffs/:outletId', authenticateToken, authorizeRoles('ADMIN'),getOutletStaff);
+
+adminRouter.put('/outlets/update-staff/:staffId', authenticateToken, authorizeRoles('ADMIN'), outletUpdateStaff);
+adminRouter.delete('/outlets/delete-staff/:staffId', authenticateToken, authorizeRoles('ADMIN'), outletDeleteStaff);
+adminRouter.get('/outlets/staff/:staffId', authenticateToken, authorizeRoles('ADMIN'), getStaffById);
 
 //Inventory management
 
@@ -32,8 +37,6 @@ adminRouter.delete('/outlets/delete-product/:id',authenticateToken,authorizeRole
 //Order management
 adminRouter.get('/outlets/:outletId/orders/', authenticateToken, authorizeRoles('ADMIN'),outletTotalOrders);
 
-//Staff Management
-adminRouter.get('/outlets/get-staffs/:outletId', authenticateToken, authorizeRoles('ADMIN'),getOutletStaff);
 
 //Inventory management
 adminRouter.get('/outlets/get-stocks/:outletId',authenticateToken,authorizeRoles('ADMIN'),getStocks);

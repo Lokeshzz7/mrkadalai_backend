@@ -234,8 +234,10 @@ export const getOutletStaff = async (req, res, next) => {
             id: true,
             email: true,
             role: true,
-            outletId: true
-          }
+            outletId: true,
+            name : true,
+            phone : true
+          },
         },
         permissions: true
       }
@@ -247,6 +249,133 @@ export const getOutletStaff = async (req, res, next) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 }
+
+export const outletUpdateStaff = async (req, res, next) => {
+  try {
+    const staffId = parseInt(req.params.staffId);
+    const { name, email, phone, staffRole } = req.body;
+
+    if (!staffId) {
+      return res.status(400).json({ message: 'Invalid staff ID' });
+    }
+
+    // First, get the staff details to find the user ID
+    const staffDetails = await prisma.staffDetails.findUnique({
+      where: { id: staffId },
+      include: { user: true }
+    });
+
+    if (!staffDetails) {
+      return res.status(404).json({ message: 'Staff member not found' });
+    }
+
+    // Update user information
+    const updatedUser = await prisma.user.update({
+      where: { id: staffDetails.user.id },
+      data: {
+        name: name || staffDetails.user.name,
+        email: email || staffDetails.user.email,
+        phone: phone || staffDetails.user.phone,
+      }
+    });
+
+    // Update staff role if provided
+    let updatedStaff = staffDetails;
+    if (staffRole) {
+      updatedStaff = await prisma.staffDetails.update({
+        where: { id: staffId },
+        data: { staffRole }
+      });
+    }
+
+    res.status(200).json({ 
+      message: 'Staff updated successfully',
+      staff: {
+        ...updatedStaff,
+        user: updatedUser
+      }
+    });
+  } catch (error) {
+    console.error('Error updating staff:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const outletDeleteStaff = async (req, res, next) => {
+  try {
+    const staffId = parseInt(req.params.staffId);
+
+    if (!staffId) {
+      return res.status(400).json({ message: 'Invalid staff ID' });
+    }
+
+    // First, get the staff details to find the user ID
+    const staffDetails = await prisma.staffDetails.findUnique({
+      where: { id: staffId },
+      include: { user: true }
+    });
+
+    if (!staffDetails) {
+      return res.status(404).json({ message: 'Staff member not found' });
+    }
+
+    // Delete staff permissions first (due to foreign key constraints)
+    await prisma.staffPermission.deleteMany({
+      where: { staffId: staffId }
+    });
+
+    // Delete staff details
+    await prisma.staffDetails.delete({
+      where: { id: staffId }
+    });
+
+    // Delete the user account
+    await prisma.user.delete({
+      where: { id: staffDetails.user.id }
+    });
+
+    res.status(200).json({ message: 'Staff member deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting staff:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getStaffById = async (req, res, next) => {
+  try {
+    const staffId = parseInt(req.params.staffId);
+
+    if (!staffId) {
+      return res.status(400).json({ message: 'Invalid staff ID' });
+    }
+
+    const staff = await prisma.staffDetails.findUnique({
+      where: { id: staffId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            role: true,
+            outletId: true
+          }
+        },
+        permissions: true
+      }
+    });
+
+    if (!staff) {
+      return res.status(404).json({ message: 'Staff member not found' });
+    }
+
+    res.status(200).json({ staff });
+  } catch (error) {
+    console.error('Error fetching staff details:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
 
 //Product management
 
