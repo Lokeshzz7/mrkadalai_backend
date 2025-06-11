@@ -6,7 +6,7 @@ export const addOutlets = async (req, res, next) => {
   const { name, address, phone, email,staffCount} = req.body;
 
   try {
-    if (!name || !address || !email || !phone ||!staffCount) {
+    if (!name || !address || !email || !phone) {
       return res.status(400).json({ message: "Provide all outlet details" });
     }
 
