@@ -171,6 +171,7 @@ model Order {
   id            Int           @id @default(autoincrement())
   customerId    Int
   outletId      Int
+  type          Int
   totalAmount   Float
   paymentMethod PaymentMethod
   status        OrderStatus

@@ -1,5 +1,5 @@
 import express  from'express';
-import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts, addExpense, removeOutlets, getExpenses, getCustomersWithWallet, getRechargeHistoryByOutlet, getOrdersPaidViaWallet,getOutletCustomers} from '../controllers/admin.controller.js';
+import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts, addExpense, removeOutlets, getExpenses, getCustomersWithWallet, getRechargeHistoryByOutlet, getOrdersPaidViaWallet,getOutletCustomers, getTickets, ticketClose} from '../controllers/admin.controller.js';
 import { authenticateToken,authorizeRoles } from '../middlewares/auth.middleware.js';
 
 const adminRouter = express.Router();
@@ -61,4 +61,8 @@ adminRouter.get('/outlets/paid-wallet/',authenticateToken,authorizeRoles('ADMIN'
 
 adminRouter.get('/outlets/customers/:outletId/', authenticateToken, authorizeRoles('ADMIN'), getOutletCustomers);
 
+//Ticket Management
+adminRouter.get('/outlets/tickets/:outletId',authenticateToken,authorizeRoles('ADMIN'),getTickets);
+
+adminRouter.post('/outlets/ticket-close/',authenticateToken,authorizeRoles('ADMIN'),ticketClose);
 export default adminRouter;
