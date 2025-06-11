@@ -2,7 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import prisma from "../prisma/client.js";
-import { signUp, signIn, signOut, checkAuth, staffSignIn } from "../controllers/auth.controller.js";
+import { signUp, signIn, signOut, checkAuth, staffSignIn } from "../controllers/auth/auth.controller.js";
 import { authenticateToken } from '../middlewares/auth.middleware.js';
 const authRouter = express.Router();
 

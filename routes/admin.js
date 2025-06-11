@@ -1,5 +1,13 @@
 import express  from'express';
-import {addOutlets,getOutletStaff,getOutlets,outletAddStaff,outletStaffPermission,outletTotalOrders,addProduct, deleteProduct, getStocks, addStock, deductStock, stockHistory, getProducts, addExpense, removeOutlets, getExpenses, getCustomersWithWallet, getRechargeHistoryByOutlet, getOrdersPaidViaWallet,getOutletCustomers, getTickets, ticketClose ,getStaffById, outletUpdateStaff, outletDeleteStaff} from '../controllers/admin.controller.js';
+import { addOutlets,getOutlets,removeOutlets } from '../controllers/admin/outlet.controller.js';
+import { outletAddStaff,getOutletStaff,outletStaffPermission,outletDeleteStaff,outletUpdateStaff,getStaffById } from '../controllers/admin/staff.controller.js';
+import { getProducts,addProduct,deleteProduct } from '../controllers/admin/product.controller.js';
+import { outletTotalOrders } from '../controllers/admin/order.controller.js';
+import { getStocks,addStock,deductStock,stockHistory} from '../controllers/admin/inventory.controller.js';
+import { getExpenses,addExpense } from '../controllers/admin/expense.controller.js';
+import { getCustomersWithWallet,getRechargeHistoryByOutlet,getOrdersPaidViaWallet } from '../controllers/admin/wallet.controller.js';
+import { getOutletCustomers } from '../controllers/admin/customer.controller.js';
+import { getTickets,ticketClose } from '../controllers/admin/ticket.controller.js';
 import { authenticateToken,authorizeRoles } from '../middlewares/auth.middleware.js';
 
 const adminRouter = express.Router();
@@ -25,7 +33,6 @@ adminRouter.put('/outlets/update-staff/:staffId', authenticateToken, authorizeRo
 adminRouter.delete('/outlets/delete-staff/:staffId', authenticateToken, authorizeRoles('ADMIN'), outletDeleteStaff);
 adminRouter.get('/outlets/staff/:staffId', authenticateToken, authorizeRoles('ADMIN'), getStaffById);
 
-//Inventory management
 
 //Product  management
 adminRouter.get('/outlets/get-products/:outletId',authenticateToken,authorizeRoles('ADMIN'),getProducts);
@@ -68,4 +75,11 @@ adminRouter.get('/outlets/customers/:outletId/', authenticateToken, authorizeRol
 adminRouter.get('/outlets/tickets/:outletId',authenticateToken,authorizeRoles('ADMIN'),getTickets);
 
 adminRouter.post('/outlets/ticket-close/',authenticateToken,authorizeRoles('ADMIN'),ticketClose);
+
+//Notification Management
+
+
+//App management
+
+
 export default adminRouter;

@@ -1,10 +1,209 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
+model Outlet {
+  id           Int            @id @default(autoincrement())
+  name         String
+  address      String
+  email        String         @unique
+  isActive     Boolean        @default(true)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  staffCount   Int            @default(0)
+  phone        String?
+  expenses     Expense[]
+  inventories  Inventory[]
+  orders       Order[]
+  products     Product[]
+  StockHistory StockHistory[]
+  users        User[]
+}
+
+model User {
+  id           Int              @id @default(autoincrement())
+  email        String           @unique
+  name         String
+  password     String
+  role         Role             @default(CUSTOMER)
+  outletId     Int?
+  createdAt    DateTime         @default(now())
+  phone        String?
+  customerInfo CustomerDetails?
+  staffInfo    StaffDetails?
+  outlet       Outlet?          @relation(fields: [outletId], references: [id])
+}
+
+model StaffDetails {
+  id          Int               @id @default(autoincrement())
+  userId      Int               @unique
+  staffRole   String            @default("Staff")
+  user        User              @relation(fields: [userId], references: [id])
+  permissions StaffPermission[]
+}
+
+model StaffPermission {
+  id        Int            @id @default(autoincrement())
+  staffId   Int
+  type      PermissionType
+  isGranted Boolean        @default(false)
+  staff     StaffDetails   @relation(fields: [staffId], references: [id])
+}
+
+model CustomerDetails {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  yearOfStudy Int
+  user        User     @relation(fields: [userId], references: [id])
+  orders      Order[]
+  tickets     Ticket[]
+  wallet      Wallet?
+}
+
+model Cart {
+  id Int @id @default(autoincrement())
+}
+
+model Product {
+  id           Int            @id @default(autoincrement())
+  name         String         @unique
+  description  String?
+  price        Float
+  imageUrl     String?
+  outletId     Int
+  category     Category
+  inventory    Inventory?
+  orderItems   OrderItem[]    @relation("ProductToOrderItems")
+  outlet       Outlet         @relation(fields: [outletId], references: [id])
+  StockHistory StockHistory[]
+}
+
+model Inventory {
+  id        Int     @id @default(autoincrement())
+  productId Int     @unique
+  outletId  Int
+  quantity  Int
+  threshold Int
+  outlet    Outlet  @relation(fields: [outletId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model StockHistory {
+  id        Int         @id @default(autoincrement())
+  productId Int
+  outletId  Int
+  quantity  Int
+  action    StockAction
+  timestamp DateTime    @default(now())
+  outlet    Outlet      @relation(fields: [outletId], references: [id])
+  product   Product     @relation(fields: [productId], references: [id])
+}
+
+model Order {
+  id            Int             @id @default(autoincrement())
+  customerId    Int
+  outletId      Int
+  totalAmount   Float
+  paymentMethod PaymentMethod
+  status        OrderStatus
+  createdAt     DateTime        @default(now())
+  type          OrderType
+  customer      CustomerDetails @relation(fields: [customerId], references: [id])
+  outlet        Outlet          @relation(fields: [outletId], references: [id])
+  items         OrderItem[]
+}
+
+model OrderItem {
+  id        Int     @id @default(autoincrement())
+  orderId   Int
+  productId Int
+  quantity  Int
+  unitPrice Float
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation("ProductToOrderItems", fields: [productId], references: [id])
+}
+
+model Wallet {
+  id             Int                 @id @default(autoincrement())
+  customerId     Int                 @unique
+  balance        Float               @default(0)
+  totalRecharged Float               @default(0)
+  totalUsed      Float               @default(0)
+  lastRecharged  DateTime?
+  lastOrder      DateTime?
+  customer       CustomerDetails     @relation(fields: [customerId], references: [id])
+  transactions   WalletTransaction[]
+}
+
+model WalletTransaction {
+  id        Int           @id @default(autoincrement())
+  walletId  Int
+  amount    Float
+  method    PaymentMethod
+  status    String
+  createdAt DateTime      @default(now())
+  wallet    Wallet        @relation(fields: [walletId], references: [id])
+}
+
+model Expense {
+  id          Int           @id @default(autoincrement())
+  outletId    Int
+  description String
+  category    String
+  amount      Float
+  method      PaymentMethod
+  paidTo      String
+  expenseDate DateTime
+  createdAt   DateTime      @default(now())
+  outlet      Outlet        @relation(fields: [outletId], references: [id])
+}
+
+model Ticket {
+  id             Int             @id @default(autoincrement())
+  customerId     Int
+  title          String
+  description    String
+  priority       Priority
+  status         TicketStatus    @default(OPEN)
+  createdAt      DateTime        @default(now())
+  resolvedAt     DateTime?
+  resolutionNote String?
+  customer       CustomerDetails @relation(fields: [customerId], references: [id])
+}
+
+model Coupon {
+  id            Int           @id @default(autoincrement())
+  code          String        @unique
+  description   String
+  rewardValue   Float
+  minOrderValue Float
+  validFrom     DateTime
+  validUntil    DateTime
+  isActive      Boolean       @default(true)
+  usageLimit    Int
+  usedCount     Int           @default(0)
+  createdAt     DateTime      @default(now())
+  usages        CouponUsage[]
+}
+
+model CouponUsage {
+  id       Int      @id @default(autoincrement())
+  couponId Int
+  orderId  Int
+  userId   Int
+  amount   Float
+  usedAt   DateTime @default(now())
+  coupon   Coupon   @relation(fields: [couponId], references: [id])
+}
+
+enum OrderType{
+  MANUAL
+  APP
 }
 
 enum Role {
@@ -40,12 +239,13 @@ enum Priority {
   HIGH
 }
 
-enum Category{
+enum Category {
   Meals
   Starters
   Desserts
   Beverages
 }
+
 enum TicketStatus {
   OPEN
   IN_PROGRESS
@@ -56,230 +256,4 @@ enum StockAction {
   ADD
   REMOVE
   UPDATE
-}
-
-model Outlet {
-  id        Int      @id @default(autoincrement())
-  name      String
-  address   String
-  phone     String?
-  email     String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  staffCount Int     @default(0)
-  products    Product[]
-  inventories Inventory[]
-  expenses    Expense[]
-  users       User[]
-  orders      Order[]
-
-  StockHistory StockHistory[]
-}
-
-model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  name      String
-  password  String
-  role      Role     @default(CUSTOMER)
-  phone     String?
-  outletId  Int? // STAFF & CUSTOMER only
-  createdAt DateTime @default(now())
-  outlet       Outlet?          @relation(fields: [outletId], references: [id])
-  staffInfo    StaffDetails?
-  customerInfo CustomerDetails?
-}
-
-// ===================== STAFF ======================
-
-model StaffDetails {
-  id       Int    @id @default(autoincrement())
-  userId   Int    @unique
-  staffRole String @default("Staff")
-  permissions StaffPermission[]
-  user        User              @relation(fields: [userId], references: [id])
-}
-
-model StaffPermission {
-  id        Int            @id @default(autoincrement())
-  staffId   Int
-  type      PermissionType
-  isGranted Boolean        @default(false)
-
-  staff StaffDetails @relation(fields: [staffId], references: [id])
-}
-
-// ===================== CUSTOMER ======================
-
-model CustomerDetails {
-  id          Int    @id @default(autoincrement())
-  userId      Int    @unique
-  yearOfStudy Int
-  wallet  Wallet?
-  orders  Order[]
-  tickets Ticket[]
-
-  user User @relation(fields: [userId], references: [id])
-}
-
-// ===================== PRODUCT, CATEGORY, INVENTORY ======================
-
-model Product {
-  id          Int     @id @default(autoincrement())
-  name        String  @unique
-  description String?
-  price       Float
-  imageUrl    String?
-  outletId    Int
-  category   Category    
-  outlet     Outlet      @relation(fields: [outletId], references: [id])
-  inventory  Inventory?
-  orderItems  OrderItem[] @relation("ProductToOrderItems") @ignore
-
-  StockHistory StockHistory[]
-}
-
-model Inventory {
-  id        Int @id @default(autoincrement())
-  productId Int @unique
-  outletId  Int
-  quantity  Int
-  threshold Int
-  product Product @relation(fields: [productId], references: [id])
-  outlet  Outlet  @relation(fields: [outletId], references: [id])
-}
-
-model StockHistory {
-  id         Int       @id @default(autoincrement())
-  productId  Int
-  outletId   Int
-  quantity   Int       // Quantity changed (positive or negative)
-  action     StockAction
-  timestamp  DateTime  @default(now())
-  
-  product Product @relation(fields: [productId], references: [id])
-  outlet  Outlet  @relation(fields: [outletId], references: [id])
-}
-
-
-
-
-// ===================== ORDER + ITEMS ======================
-
-model Order {
-  id            Int           @id @default(autoincrement())
-  customerId    Int
-  outletId      Int
-  type          Int
-  totalAmount   Float
-  paymentMethod PaymentMethod
-  status        OrderStatus
-  createdAt     DateTime      @default(now())
-
-  customer CustomerDetails @relation(fields: [customerId], references: [id])
-  outlet   Outlet          @relation(fields: [outletId], references: [id])
-  items    OrderItem[]
-}
-
-model OrderItem {
-  id        Int   @id @default(autoincrement())
-  orderId   Int
-  productId Int
-  quantity  Int
-  unitPrice Float
-
-  order   Order   @relation(fields: [orderId], references: [id])
-  product Product @relation(name: "ProductToOrderItems", fields: [productId], references: [id])
-}
-
-// ===================== WALLET & TRANSACTIONS ======================
-
-model Wallet {
-  id             Int       @id @default(autoincrement())
-  customerId     Int       @unique
-  balance        Float     @default(0)
-  totalRecharged Float     @default(0)
-  totalUsed      Float     @default(0)
-  lastRecharged  DateTime?
-  lastOrder      DateTime?
-
-  customer     CustomerDetails     @relation(fields: [customerId], references: [id])
-  transactions WalletTransaction[]
-}
-
-model WalletTransaction {
-  id        Int           @id @default(autoincrement())
-  walletId  Int
-  amount    Float
-  method    PaymentMethod
-  status    String
-  createdAt DateTime      @default(now())
-
-  wallet Wallet @relation(fields: [walletId], references: [id])
-}
-
-// ===================== EXPENSES ======================
-
-model Expense {
-  id          Int           @id @default(autoincrement())
-  outletId    Int
-  description String
-  category    String
-  amount      Float
-  method      PaymentMethod
-  paidTo      String
-  expenseDate DateTime
-  createdAt   DateTime      @default(now())
-
-  outlet Outlet @relation(fields: [outletId], references: [id])
-}
-
-// ===================== TICKETS ======================
-
-model Ticket {
-  id             Int          @id @default(autoincrement())
-  customerId     Int
-  title          String
-  description    String
-  priority       Priority
-  status         TicketStatus @default(OPEN)
-  createdAt      DateTime     @default(now())
-  resolvedAt     DateTime?
-  resolutionNote String?
-
-  customer CustomerDetails @relation(fields: [customerId], references: [id])
-}
-
-// ===================== COUPONS ======================
-
-model Coupon {
-  id            Int      @id @default(autoincrement())
-  code          String   @unique
-  description   String
-  rewardValue   Float
-  minOrderValue Float
-  validFrom     DateTime
-  validUntil    DateTime
-  isActive      Boolean  @default(true)
-  usageLimit    Int
-  usedCount     Int      @default(0)
-  createdAt     DateTime @default(now())
-
-  usages CouponUsage[]
-}
-
-model CouponUsage {
-  id       Int      @id @default(autoincrement())
-  couponId Int
-  orderId  Int
-  userId   Int
-  amount   Float
-  usedAt   DateTime @default(now())
-
-  coupon Coupon @relation(fields: [couponId], references: [id])
-}
-
-model Cart{
-  id Int @id @default(autoincrement())
 }
