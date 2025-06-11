@@ -8,4 +8,4 @@
 CREATE TYPE "OrderType" AS ENUM ('MANUAL', 'APP');
 
 -- AlterTable
-ALTER TABLE "Order" ADD COLUMN "type" "OrderType" NOT NULL;
+ALTER TABLE "Order" ADD COLUMN     "type" "OrderType" NOT NULL;

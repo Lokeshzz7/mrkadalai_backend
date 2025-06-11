@@ -228,8 +228,8 @@ enum PaymentMethod {
 
 enum OrderStatus {
   PENDING
-  CONFIRMED
   DELIVERED
+  PARTIALLY_DELIVERED
   CANCELLED
 }
 
