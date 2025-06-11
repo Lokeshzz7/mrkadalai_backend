@@ -272,13 +272,24 @@ export const checkAuth = async (req, res) => {
       return res.status(400).json({ message: 'Invalid token payload' });
     }
 
+    // Include staffInfo and permissions in the query for STAFF role users
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        outletId: true
+      include: {
+        staffInfo: {
+          include: {
+            permissions: true
+          }
+        },
+        outlet: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            phone: true,
+            email: true
+          }
+        }
       }
     });
 
@@ -289,7 +300,32 @@ export const checkAuth = async (req, res) => {
 
     console.log('User found:', user);
 
-    return res.status(200).json({ user });
+    // Format the response similar to signIn
+    let userResponse = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      outletId: user.outletId,
+      outlet: user.outlet
+    };
+
+    // Add staff details if user is STAFF
+    if (user.role === 'STAFF' && user.staffInfo) {
+      const permissions = user.staffInfo.permissions?.map(perm => ({
+        type: perm.type,
+        isGranted: perm.isGranted
+      })) || [];
+
+      userResponse.staffDetails = {
+        id: user.staffInfo.id,
+        staffRole: user.staffInfo.staffRole,
+        permissions: permissions
+      };
+    }
+
+    return res.status(200).json({ user: userResponse });
   } catch (error) {
     console.error('Unhandled error in checkAuth:', error);
     return res.status(500).json({ message: 'Server error during authentication.' });
