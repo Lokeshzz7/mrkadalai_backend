@@ -260,7 +260,7 @@ export const outletUpdateStaff = async (req, res, next) => {
       return res.status(400).json({ message: 'Invalid staff ID' });
     }
 
-    // First, get the staff details to find the user ID
+    
     const staffDetails = await prisma.staffDetails.findUnique({
       where: { id: staffId },
       include: { user: true }
@@ -270,7 +270,6 @@ export const outletUpdateStaff = async (req, res, next) => {
       return res.status(404).json({ message: 'Staff member not found' });
     }
 
-    // Update user information
     const updatedUser = await prisma.user.update({
       where: { id: staffDetails.user.id },
       data: {
@@ -280,7 +279,6 @@ export const outletUpdateStaff = async (req, res, next) => {
       }
     });
 
-    // Update staff role if provided
     let updatedStaff = staffDetails;
     if (staffRole) {
       updatedStaff = await prisma.staffDetails.update({
@@ -310,7 +308,7 @@ export const outletDeleteStaff = async (req, res, next) => {
       return res.status(400).json({ message: 'Invalid staff ID' });
     }
 
-    // First, get the staff details to find the user ID
+  
     const staffDetails = await prisma.staffDetails.findUnique({
       where: { id: staffId },
       include: { user: true }
@@ -1075,4 +1073,5 @@ export const ticketClose = async (req, res, next) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
