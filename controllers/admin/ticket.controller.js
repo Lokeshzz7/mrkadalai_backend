@@ -28,6 +28,8 @@ export const getTickets = async (req, res, next) => {
                 priority: true,
                 status: true,
                 createdAt: true,
+                resolutionNote: true,
+                resolvedAt: true,
               },
             },
           },
