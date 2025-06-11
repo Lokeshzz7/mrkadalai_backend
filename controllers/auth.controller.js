@@ -136,6 +136,103 @@ export const signIn = async (req, res, next) => {
   }
 };
 
+export const staffSignIn = async (req, res, next) => {
+  const { email, password } = req.body;
+
+  try {
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    // Find user with staff role and include staff details and permissions
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        staffInfo: {
+          include: {
+            permissions: true
+          }
+        },
+        outlet: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+            phone: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Check if user is staff
+    if (user.role !== 'STAFF') {
+      return res.status(403).json({ message: 'Access denied. Staff credentials required.' });
+    }
+
+    // Verify password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        outletId: user.outletId
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    // Set cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    });
+
+    // Format permissions for easier frontend consumption
+    const permissions = user.staffInfo?.permissions?.map(perm => ({
+      type: perm.type,
+      isGranted: perm.isGranted
+    })) || [];
+
+    // Prepare response
+    const staffResponse = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      outletId: user.outletId,
+      outlet: user.outlet,
+      staffDetails: {
+        id: user.staffInfo?.id,
+        staffRole: user.staffInfo?.staffRole,
+        permissions: permissions
+      }
+    };
+
+    res.status(200).json({
+      message: 'Staff login successful',
+      user: staffResponse,
+    });
+
+  } catch (error) {
+    console.error("Staff login error:", error);
+    next(error);
+  }
+};
+
 export const signOut = async (req, res, next) => {
   try {
     res.clearCookie('token', {
