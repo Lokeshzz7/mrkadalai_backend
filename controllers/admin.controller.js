@@ -3,12 +3,14 @@ import prisma from '../prisma/client.js';
 
 //Outlets management
 export const addOutlets = async (req, res, next) => {
-  const { name, address, phone, email} = req.body;
+  const { name, address, phone, email,staffCount} = req.body;
 
   try {
     if (!name || !address || !email || !phone ||!staffCount) {
       return res.status(400).json({ message: "Provide all outlet details" });
     }
+
+    const intStaffCount = parseInt(staffCount);
 
     const existingOutlet = await prisma.outlet.findUnique({
       where: { email }
@@ -24,7 +26,7 @@ export const addOutlets = async (req, res, next) => {
         address,
         phone,
         email,
-        staffCount
+        staffCount : intStaffCount
       }
     });
 
@@ -799,5 +801,51 @@ export const getOrdersPaidViaWallet = async (req, res, next) => {
   } catch (err) {
     console.error("Error fetching wallet orders:", err);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+export const getOutletCustomers = async (req, res, next) => {
+  const { outletId } = req.params;
+
+  try {
+    const outletIdNum = Number(outletId);
+
+    const customers = await prisma.user.findMany({
+      where: {
+        outletId: outletIdNum,
+        role: 'CUSTOMER',
+      },
+      include: {
+        customerInfo: {
+          include: {
+            wallet: true,
+            orders: {
+              select: {
+                totalAmount: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const formattedCustomers = customers.map(user => ({
+      customerId: user.customerInfo?.id || null,
+      walletId: user.customerInfo?.wallet?.id || null,
+      name: user.name,
+      yearOfStudy: user.customerInfo?.yearOfStudy || null,
+      phoneNo: user.phone || null,
+      walletBalance: user.customerInfo?.wallet?.balance || 0,
+      totalPurchaseCost: user.customerInfo?.orders.reduce((sum, order) => sum + order.totalAmount, 0) || 0,
+    }));
+
+    res.status(200).json({
+      message: customers.length > 0 ? 'Customers retrieved successfully' : 'No customers found for this outlet',
+      customers: formattedCustomers,
+    });
+  } catch (error) {
+    console.error('Error fetching customers:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
 };
