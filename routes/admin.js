@@ -4,7 +4,7 @@ import { outletAddStaff,getOutletStaff,outletStaffPermission,outletDeleteStaff,o
 import { getProducts,addProduct,deleteProduct } from '../controllers/admin/product.controller.js';
 import { outletTotalOrders } from '../controllers/admin/order.controller.js';
 import { getStocks,addStock,deductStock,stockHistory} from '../controllers/admin/inventory.controller.js';
-import { getExpenses,addExpense } from '../controllers/admin/expense.controller.js';
+import { getExpenses,addExpense,getExpenseByDate } from '../controllers/admin/expense.controller.js';
 import { getCustomersWithWallet,getRechargeHistoryByOutlet,getOrdersPaidViaWallet } from '../controllers/admin/wallet.controller.js';
 import { getOutletCustomers } from '../controllers/admin/customer.controller.js';
 import { getTickets,ticketClose } from '../controllers/admin/ticket.controller.js';
@@ -58,6 +58,8 @@ adminRouter.post('/outlets/get-stock-history',authenticateToken,authorizeRoles('
 adminRouter.post('/outlets/add-expenses/',authenticateToken,authorizeRoles('ADMIN'),addExpense);
 
 adminRouter.get('/outlets/get-expenses/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getExpenses);
+
+adminRouter.get('/outlets/get-expenses-bydate/',authenticateToken,authorizeRoles('ADMIN'),getExpenseByDate); 
 
 //Wallet Management
 
