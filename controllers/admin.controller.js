@@ -71,10 +71,10 @@ export const outletTotalOrders = async (req, res, next) => {
             user: {
               select: {
                 email: true,
-                createdAt: true
+                createdAt: true,
+                phone: true 
               }
-            },
-            phone: true
+            }
           }
         },
         items: {
@@ -100,7 +100,7 @@ export const outletTotalOrders = async (req, res, next) => {
       paymentMethod: order.paymentMethod,
       status: order.status,
       customerName: order.customer?.user?.email || 'N/A',
-      customerPhone: order.customer?.phone || 'N/A',
+      customerPhone: order.customer?.user?.phone || 'N/A',
       items: order.items.map(item => ({
         productName: item.product.name,
         quantity: item.quantity,
@@ -113,7 +113,8 @@ export const outletTotalOrders = async (req, res, next) => {
   } catch (err) {
     res.status(500).json({ message: "Failed to fetch orders", error: err.message });
   }
-}
+};
+
 
 //Staff management
 export const outletAddStaff = async (req, res, next) => {
@@ -476,7 +477,7 @@ export const getStocks = async (req, res, next) => {
     const products = await prisma.product.findMany({
       where: { outletId },
       include: {
-        inventory: true
+        inventory: true,
       }
     });
 
@@ -487,9 +488,10 @@ export const getStocks = async (req, res, next) => {
     const stockInfo = products.map(prod => ({
       id: prod.id,
       name: prod.name,
+      category: prod.category,
       price: prod.price,
       quantity: prod.inventory?.quantity ?? 0,
-      threshold: prod.inventory?.threshold ?? 0
+      threshold: prod.inventory?.threshold ?? 0,
     }));
 
     return res.status(200).json({ stocks: stockInfo });
@@ -499,11 +501,16 @@ export const getStocks = async (req, res, next) => {
   }
 };
 
-export const addStock = async (req, res,next) => {
+
+export const addStock = async (req, res, next) => {
   const { productId, outletId, addedQuantity } = req.body;
 
   if (!productId || !outletId || !addedQuantity) {
     return res.status(400).json({ message: "Required fields are missing" });
+  }
+
+  if (isNaN(productId) || isNaN(outletId) || isNaN(addedQuantity)) {
+    return res.status(400).json({ message: "Invalid number in request" });
   }
 
   try {
@@ -513,7 +520,6 @@ export const addStock = async (req, res,next) => {
       return res.status(404).json({ message: "Product inventory not found" });
     }
 
-  
     const updatedInventory = await prisma.inventory.update({
       where: { productId },
       data: {
@@ -523,10 +529,10 @@ export const addStock = async (req, res,next) => {
 
     await prisma.stockHistory.create({
       data: {
-        productId,
-        outletId,
+        productId: parseInt(productId),
+        outletId : parseInt(outletId),
         quantity: addedQuantity,
-        action: "ADD",
+        action: "ADD"
       }
     });
 
@@ -536,6 +542,7 @@ export const addStock = async (req, res,next) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 export const deductStock = async (req, res, next) => {
   const { productId, outletId, quantity } = req.body;
@@ -572,7 +579,7 @@ export const deductStock = async (req, res, next) => {
     await prisma.stockHistory.create({
       data: {
         productId: parseInt(productId),
-        outletId,
+        outletId: parseInt(outletId),
         quantity,
         action: "REMOVE",
       }
@@ -601,7 +608,9 @@ export const stockHistory = async (req, res, next) => {
     const history = await prisma.stockHistory.findMany({
       where: {
         outletId: parsedOutletId,
-        action: "ADD",
+        action: {
+            in: ["ADD", "REMOVE"]
+        },
         timestamp: {
           gte: from,
           lte: to
@@ -614,7 +623,8 @@ export const stockHistory = async (req, res, next) => {
         product: {
           select: {
             id: true,
-            name: true
+            name: true,
+            category : true
           }
         }
       }
