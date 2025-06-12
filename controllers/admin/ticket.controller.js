@@ -46,6 +46,8 @@ export const getTickets = async (req, res, next) => {
         createdAt: ticket.createdAt,
         customerName: user.name,
         customerEmail: user.email,
+        resolutionNote: ticket.resolutionNote,
+        resolvedAt: ticket.resolvedAt
       })) || []
     );
 
