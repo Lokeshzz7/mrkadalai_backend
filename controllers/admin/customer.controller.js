@@ -1,4 +1,5 @@
 import prisma from "../../prisma/client.js";
+
 //Customer management
 export const getOutletCustomers = async (req, res, next) => {
   const { outletId } = req.params;
@@ -18,6 +19,7 @@ export const getOutletCustomers = async (req, res, next) => {
             orders: {
               select: {
                 totalAmount: true,
+                createdAt: true,
               },
             },
           },
@@ -25,15 +27,26 @@ export const getOutletCustomers = async (req, res, next) => {
       },
     });
 
-    const formattedCustomers = customers.map(user => ({
-      customerId: user.customerInfo?.id || null,
-      walletId: user.customerInfo?.wallet?.id || null,
-      name: user.name,
-      yearOfStudy: user.customerInfo?.yearOfStudy || null,
-      phoneNo: user.phone || null,
-      walletBalance: user.customerInfo?.wallet?.balance || 0,
-      totalPurchaseCost: user.customerInfo?.orders.reduce((sum, order) => sum + order.totalAmount, 0) || 0,
-    }));
+    const formattedCustomers = customers.map(user => {
+      const totalOrders = user.customerInfo?.orders?.length || 0;
+  
+      const lastOrderDate = user.customerInfo?.orders?.length > 0 
+        ? user.customerInfo.orders.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0].createdAt
+        : null;
+
+      return {
+        customerId: user.customerInfo?.id || null,
+        walletId: user.customerInfo?.wallet?.id || null,
+        name: user.name,
+        email: user.email,
+        yearOfStudy: user.customerInfo?.yearOfStudy || null,
+        phoneNo: user.phone || null,
+        walletBalance: user.customerInfo?.wallet?.balance || 0,
+        totalOrders: totalOrders,
+        totalPurchaseCost: user.customerInfo?.orders.reduce((sum, order) => sum + order.totalAmount, 0) || 0,
+        lastOrderDate: lastOrderDate,
+      };
+    });
 
     res.status(200).json({
       message: customers.length > 0 ? 'Customers retrieved successfully' : 'No customers found for this outlet',
