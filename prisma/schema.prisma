@@ -145,7 +145,7 @@ model WalletTransaction {
   walletId  Int
   amount    Float
   method    PaymentMethod
-  status    String
+  status    WalletTransType
   createdAt DateTime      @default(now())
   wallet    Wallet        @relation(fields: [walletId], references: [id])
 }
@@ -256,4 +256,9 @@ enum StockAction {
   ADD
   REMOVE
   UPDATE
+}
+
+enum WalletTransType{
+  RECHARGE
+  DEDUCT
 }

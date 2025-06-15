@@ -12,7 +12,7 @@ import errorMiddleware from './middlewares/error.middleware.js';
 import arjectMiddleware from './middlewares/arcjet.middleware.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-
+import staffRoutes from './routes/staff.js';
 
 app.use(cookieParser());
 
@@ -26,7 +26,7 @@ app.use(express.json());
 
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
-
+app.use('/api/staff',staffRoutes);
 app.use(errorMiddleware)
 
 app.get('/', (req, res) => {

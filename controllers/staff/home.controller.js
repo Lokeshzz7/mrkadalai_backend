@@ -16,39 +16,39 @@ export const recentOrders = async (req, res) => {
           include: {
             user: {
               select: {
-                name: true
-              }
-            }
-          }
+                name: true,
+              },
+            },
+          },
         },
         items: {
           include: {
             product: {
               select: {
-                name: true
-              }
-            }
-          }
-        }
-      }
+                name: true,
+              },
+            },
+          },
+        },
+      },
     });
 
     const formatted = orders.map(order => ({
       billNumber: order.id,
-      customerName: order.customer.user.name,
+      customerName: order.customer?.user?.name || "Walk-in Customer",
       orderType: order.type,
       paymentMode: order.paymentMethod,
       status: order.status,
       items: order.items.map(item => ({
         name: item.product.name,
-        quantity: item.quantity
+        quantity: item.quantity,
       })),
-      createdAt: order.createdAt
+      createdAt: order.createdAt,
     }));
 
     res.status(200).json({
       message: "Recent orders fetched successfully",
-      orders: formatted
+      orders: formatted,
     });
 
   } catch (error) {
@@ -56,4 +56,3 @@ export const recentOrders = async (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
-
