@@ -106,14 +106,14 @@ model StockHistory {
 
 model Order {
   id            Int             @id @default(autoincrement())
-  customerId    Int
+  customerId    Int?
   outletId      Int
   totalAmount   Float
   paymentMethod PaymentMethod
   status        OrderStatus
   createdAt     DateTime        @default(now())
   type          OrderType
-  customer      CustomerDetails @relation(fields: [customerId], references: [id])
+  customer      CustomerDetails? @relation(fields: [customerId], references: [id])
   outlet        Outlet          @relation(fields: [outletId], references: [id])
   items         OrderItem[]
 }
