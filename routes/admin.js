@@ -8,9 +8,11 @@ import { getExpenses,addExpense,getExpenseByDate } from '../controllers/admin/ex
 import { getCustomersWithWallet,getRechargeHistoryByOutlet,getOrdersPaidViaWallet } from '../controllers/admin/wallet.controller.js';
 import { getOutletCustomers } from '../controllers/admin/customer.controller.js';
 import { getTickets,ticketClose } from '../controllers/admin/ticket.controller.js';
-import { authenticateToken,authorizeRoles } from '../middlewares/auth.middleware.js';
+import { authenticateToken,authorizeRoles, restrictToAdmin } from '../middlewares/auth.middleware.js';
 
 const adminRouter = express.Router();
+
+adminRouter.use(restrictToAdmin);
 
 adminRouter.get('/dashboard/', authenticateToken, authorizeRoles('ADMIN'), (req, res) => {
   res.json({ message: 'Welcome to Admin Dashboard' });
