@@ -17,7 +17,7 @@ import staffRoutes from './routes/staff.js';
 app.use(cookieParser());
 
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: true,
   credentials: true,
 }));
 app.use(express.json());
@@ -26,14 +26,14 @@ app.use(express.json());
 
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/staff',staffRoutes);
+app.use('/api/staff', staffRoutes);
 app.use(errorMiddleware)
 
 app.get('/', (req, res) => {
   res.send('Server is running...');
 });
 
-app.listen(PORT, async() => {
+app.listen(PORT, async () => {
   console.log(`Server listening on http://localhost:${PORT}`);
   await pool;
 });
