@@ -128,7 +128,7 @@ export const getOrder = async (req, res) => {
   }
 };
 
-export const updateItemStatus = async (req, res) => {
+export const updateOrder = async (req, res) => {
   const { orderId, orderItemId, status, outletId } = req.body;
 
   if (!orderId || !status || !outletId) {
