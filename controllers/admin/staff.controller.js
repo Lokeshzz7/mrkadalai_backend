@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import prisma from "../../prisma/client.js";
 
+
 export const outletAddStaff = async (req, res, next) => {
   try {
     const { email, password, name , phone, outletId, staffRole, permissions = [] } = req.body;

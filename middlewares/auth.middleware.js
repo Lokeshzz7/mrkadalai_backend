@@ -42,6 +42,17 @@ export const authorizeRoles = (...roles) => {
       return res.status(401).json({ message: 'Authentication required.' });
     }
     if (!roles.includes(req.user.role)) {
+        try {
+      res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+      });
+
+      res.status(200).json({ message: 'Signed out successfully' });
+    } catch (error) {
+      next(error);
+    }
       return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
     }
     next();

@@ -124,6 +124,7 @@ model OrderItem {
   productId Int
   quantity  Int
   unitPrice Float
+  status    OrderItemStatus @default(NOT_DELIVERED)
   order     Order   @relation(fields: [orderId], references: [id])
   product   Product @relation("ProductToOrderItems", fields: [productId], references: [id], onDelete: Cascade)
 }
@@ -204,6 +205,11 @@ model CouponUsage {
 enum OrderType{
   MANUAL
   APP
+}
+
+enum OrderItemStatus {
+  NOT_DELIVERED
+  DELIVERED
 }
 
 enum Role {
