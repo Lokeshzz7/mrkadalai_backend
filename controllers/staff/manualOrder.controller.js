@@ -37,3 +37,51 @@ export const addManualOrder = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+
+export const getProducts = async (req, res) => {
+  const outletId = parseInt(req.params.outletId);
+
+  if (!outletId) {
+    return res.status(400).json({ message: "Provide a valid outletId" });
+  }
+
+  try {
+    const products = await prisma.inventory.findMany({
+      where: {
+        outletId: outletId,
+        quantity: {
+          gt: 0,
+        },
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            price: true,
+            imageUrl: true,
+            category: true,
+          },
+        },
+      },
+    });
+
+    const availableProducts = products.map((entry) => ({
+      id: entry.product.id,
+      name: entry.product.name,
+      description: entry.product.description,
+      price: entry.product.price,
+      imageUrl: entry.product.imageUrl,
+      category: entry.product.category,
+      quantityAvailable: entry.quantity,
+    }));
+
+    return res.status(200).json({ products: availableProducts });
+
+  } catch (error) {
+    console.error("Error fetching available products:", error);
+    return res.status(500).json({ message: "Failed to fetch available products" });
+  }
+};
