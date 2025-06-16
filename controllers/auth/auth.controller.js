@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import prisma from '../../prisma/client.js';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../../config/env.js';
 
+
 export const signUp = async (req, res, next) => {
   const { name, email, password, role, outletId, phone, yearOfStudy } = req.body;
 
@@ -90,7 +91,6 @@ export const signUp = async (req, res, next) => {
   }
 };
 
-
 export const signIn = async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -106,6 +106,7 @@ export const signIn = async (req, res, next) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     
+
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -145,7 +146,7 @@ export const staffSignIn = async (req, res, next) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    // Find user with staff role and include staff details and permissions
+    
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
@@ -170,18 +171,18 @@ export const staffSignIn = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Check if user is staff
+    
     if (user.role !== 'STAFF') {
       return res.status(403).json({ message: 'Access denied. Staff credentials required.' });
     }
 
-    // Verify password
+   
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    // Generate JWT token
+   
     const token = jwt.sign(
       {
         id: user.id,
@@ -193,7 +194,7 @@ export const staffSignIn = async (req, res, next) => {
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    // Set cookie
+    
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -201,13 +202,13 @@ export const staffSignIn = async (req, res, next) => {
       maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     });
 
-    // Format permissions for easier frontend consumption
+    
     const permissions = user.staffInfo?.permissions?.map(perm => ({
       type: perm.type,
       isGranted: perm.isGranted
     })) || [];
 
-    // Prepare response
+    
     const staffResponse = {
       id: user.id,
       name: user.name,
@@ -256,8 +257,6 @@ export const checkAuth = async (req, res) => {
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
-    console.log('Token received:', token);
-
     let decoded;
     try {
       decoded = jwt.verify(token, JWT_SECRET);
@@ -273,7 +272,7 @@ export const checkAuth = async (req, res) => {
       return res.status(400).json({ message: 'Invalid token payload' });
     }
 
-    // Include staffInfo and permissions in the query for STAFF role users
+   
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -301,7 +300,7 @@ export const checkAuth = async (req, res) => {
 
     console.log('User found:', user);
 
-    // Format the response similar to signIn
+   
     let userResponse = {
       id: user.id,
       name: user.name,
@@ -312,7 +311,6 @@ export const checkAuth = async (req, res) => {
       outlet: user.outlet
     };
 
-    // Add staff details if user is STAFF
     if (user.role === 'STAFF' && user.staffInfo) {
       const permissions = user.staffInfo.permissions?.map(perm => ({
         type: perm.type,
