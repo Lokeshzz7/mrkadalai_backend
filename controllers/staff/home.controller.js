@@ -92,6 +92,7 @@ export const getOrder = async (req, res) => {
             product: {
               select: {
                 name: true,
+                description: true,
               },
             },
           },
@@ -108,15 +109,16 @@ export const getOrder = async (req, res) => {
       customerName: order.customer?.user?.name || "Guest",
       outletName: order.outlet.name,
       orderStatus: order.status,
-      totalPrice :order.totalAmount ,
+      totalPrice: order.totalAmount,
       createdAt: order.createdAt,
       items: order.items.map((item) => ({
+        id: item.id, // Include the actual OrderItem ID
         productName: item.product.name,
-        productDescription : item.product.description,
+        productDescription: item.product.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         totalPrice: item.quantity * item.unitPrice,
-        itemStatus : item.status
+        itemStatus: item.status
       })),
     };
 
