@@ -1,14 +1,23 @@
 
 import express from "express";
-import { getProducts} from "../controllers/staff/manualOrder.controller.js";
 import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory } from "../controllers/customer/order.controller.js";
+import { getProductsAndStocks } from "../controllers/customer/home.controller.js";
 import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/auth.middleware.js";
+import { rechargeWallet,recentTrans } from "../controllers/customer/wallet.controller.js";
 const customerRouter = express.Router();
 
-customerRouter.get("/outlets/get-product/:outletId",authenticateToken,authorizeRoles('CUSTOMER'),getProducts)
+// Products Fetch 
+customerRouter.get("/outlets/get-product/",authenticateToken,authorizeRoles('CUSTOMER'),getProductsAndStocks);
+
+//Order management
 customerRouter.post("/outlets/customer-order/",authenticateToken,authorizeRoles('CUSTOMER'),customerAppOrder)
 customerRouter.get("/outlets/customer-ongoing-order/",authenticateToken,authorizeRoles('CUSTOMER'),customerAppOngoingOrderList)
 customerRouter.get("/outlets/customer-order-history/",authenticateToken,authorizeRoles('CUSTOMER'),customerAppOrderHistory)
+
+//Wallet management
+customerRouter.post("/outlets/recharge-wallet",authenticateToken,authorizeRoles('CUSTOMER'),rechargeWallet);
+customerRouter.get("/outlets/get-recent-recharge",authenticateToken,authorizeRoles('CUSTOMER'),recentTrans);
+
 
 
 export default  customerRouter;

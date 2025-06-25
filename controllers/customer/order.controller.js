@@ -2,29 +2,35 @@ import prisma from "../../prisma/client.js";
 
 export const customerAppOrder = async (req, res) => {
   try {
-    const {outletId, customerId,totalAmount,paymentMethod,deliveryDate,deliverySlot,razorpayPaymentId,items,} = req.body;
+    const {
+      outletId,
+      customerId,
+      totalAmount,
+      paymentMethod,
+      deliveryDate,
+      deliverySlot,
+      razorpayPaymentId,
+      items,
+    } = req.body;
 
-    // Validate required fields
     if (
-      !customerId ||!outletId ||!totalAmount ||!paymentMethod ||!deliveryDate ||!deliverySlot ||!items ||!Array.isArray(items) ||items.length === 0
+      !customerId || !outletId || !totalAmount || !paymentMethod ||
+      !deliveryDate || !deliverySlot || !items || !Array.isArray(items) || items.length === 0
     ) {
       return res.status(400).json({ message: "Missing or invalid required fields" });
     }
 
-    // Validate deliveryDate
     const deliveryDateObj = new Date(deliveryDate);
     if (isNaN(deliveryDateObj.getTime())) {
       return res.status(400).json({ message: "Invalid delivery date format" });
     }
 
-    // Determine isPreOrder
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const deliveryDateNormalized = new Date(deliveryDateObj);
     deliveryDateNormalized.setHours(0, 0, 0, 0);
     const isPreOrder = deliveryDateNormalized > today;
 
-    // Map deliverySlot to enum
     const slotMap = {
       "11:00-12:00": "SLOT_11_12",
       "12:00-13:00": "SLOT_12_13",
@@ -34,32 +40,39 @@ export const customerAppOrder = async (req, res) => {
       "16:00-17:00": "SLOT_16_17",
     };
     const normalizedSlot = slotMap[deliverySlot] || deliverySlot;
-    const validSlots = [
-      "SLOT_11_12",
-      "SLOT_12_13",
-      "SLOT_13_14",
-      "SLOT_14_15",
-      "SLOT_15_16",
-      "SLOT_16_17",
-    ];
+    const validSlots = Object.values(slotMap);
     if (!validSlots.includes(normalizedSlot)) {
       return res.status(400).json({ message: "Invalid delivery slot" });
     }
 
-    // Validate paymentMethod
     const validPaymentMethods = ["UPI", "CARD", "CASH", "WALLET"];
     if (!validPaymentMethods.includes(paymentMethod)) {
       return res.status(400).json({ message: "Invalid payment method" });
     }
 
-    // Validate items
     for (const item of items) {
       if (!item.productId || !item.quantity || !item.unitPrice || item.quantity <= 0) {
         return res.status(400).json({ message: "Invalid order items" });
       }
     }
 
-    // Create order
+   
+    for (const item of items) {
+      const inventory = await prisma.inventory.findFirst({
+        where: {
+          productId: item.productId,
+          outletId: outletId,
+        },
+      });
+
+      if (!inventory || inventory.quantity < item.quantity) {
+        return res.status(400).json({
+          message: `Insufficient inventory for product ID ${item.productId}`,
+        });
+      }
+    }
+
+   
     const order = await prisma.order.create({
       data: {
         customerId,
@@ -103,6 +116,20 @@ export const customerAppOrder = async (req, res) => {
       },
     });
 
+    for (const item of items) {
+      await prisma.inventory.updateMany({
+        where: {
+          productId: item.productId,
+          outletId: outletId,
+        },
+        data: {
+          quantity: {
+            decrement: item.quantity,
+          },
+        },
+      });
+    }
+
     res.status(201).json({ message: "Order created", order });
   } catch (error) {
     console.error("Error creating order:", error);
@@ -113,7 +140,8 @@ export const customerAppOrder = async (req, res) => {
 
 export const customerAppOngoingOrderList = async (req, res) => {
   try {
-    const { customerId } = req.body; // Alternatively: req.user.id if using auth middleware
+    const customerId = req.user.id;
+    
 
     if (!customerId) {
       return res.status(400).json({ message: "Customer ID is required" });
@@ -164,7 +192,7 @@ export const customerAppOngoingOrderList = async (req, res) => {
 
 export const customerAppOrderHistory = async (req, res) => {
   try {
-    const { customerId } = req.body; // Alternatively: req.user.id if using auth middleware
+    const customerId  = req.user.id; 
 
     if (!customerId) {
       return res.status(400).json({ message: "Customer ID is required" });
@@ -213,3 +241,4 @@ export const customerAppOrderHistory = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+

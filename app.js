@@ -7,12 +7,12 @@ const app = express();
 const PORT = process.env.PORT || 5500;
 
 import authRoutes from './routes/authRoutes.js';
-import adminRoutes from './routes/admin.js';
+import adminRoutes from './routes/adminRoutes.js';
 import errorMiddleware from './middlewares/error.middleware.js';
 import arjectMiddleware from './middlewares/arcjet.middleware.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import staffRoutes from './routes/staff.js';
+import staffRoutes from './routes/staffRoutes.js';
 import customerRouter from './routes/customerRoutes.js';
 
 app.use(cookieParser());
