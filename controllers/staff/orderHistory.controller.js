@@ -44,7 +44,7 @@ export const getOrderHistory = async (req, res) => {
 
     const formattedOrders = orders.map((order) => ({
       orderId: order.id,
-      customerName: order.customer?.user?.name || 'Manual Order',
+      customerName: order.customer?.user?.name || 'Walk-In',
       orderType: order.type,
       createdAt: order.createdAt,
       status: order.status,

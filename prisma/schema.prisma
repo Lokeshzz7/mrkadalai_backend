@@ -36,14 +36,14 @@ model User {
   phone        String?
   customerInfo CustomerDetails?
   staffInfo    StaffDetails?
-  outlet       Outlet?          @relation(fields: [outletId], references: [id])
+  outlet       Outlet?          @relation(fields: [outletId], references: [id], onDelete: Cascade)
 }
 
 model StaffDetails {
   id          Int               @id @default(autoincrement())
   userId      Int               @unique
   staffRole   String            @default("Staff")
-  user        User              @relation(fields: [userId], references: [id])
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   permissions StaffPermission[]
 }
 
@@ -52,14 +52,14 @@ model StaffPermission {
   staffId   Int
   type      PermissionType
   isGranted Boolean        @default(false)
-  staff     StaffDetails   @relation(fields: [staffId], references: [id])
+  staff     StaffDetails   @relation(fields: [staffId], references: [id], onDelete: Cascade)
 }
 
 model CustomerDetails {
   id          Int      @id @default(autoincrement())
   userId      Int      @unique
   yearOfStudy Int
-  user        User     @relation(fields: [userId], references: [id])
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   orders      Order[]
   tickets     Ticket[]
   wallet      Wallet?
@@ -79,7 +79,7 @@ model Product {
   category     Category
   inventory    Inventory?
   orderItems   OrderItem[]    @relation("ProductToOrderItems")
-  outlet       Outlet         @relation(fields: [outletId], references: [id])
+  outlet       Outlet         @relation(fields: [outletId], references: [id], onDelete: Cascade)
   StockHistory StockHistory[]
 }
 
@@ -89,7 +89,7 @@ model Inventory {
   outletId  Int
   quantity  Int
   threshold Int
-  outlet    Outlet  @relation(fields: [outletId], references: [id])
+  outlet    Outlet  @relation(fields: [outletId], references: [id], onDelete: Cascade)
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
@@ -100,33 +100,37 @@ model StockHistory {
   quantity  Int
   action    StockAction
   timestamp DateTime    @default(now())
-  outlet    Outlet      @relation(fields: [outletId], references: [id])
+  outlet    Outlet      @relation(fields: [outletId], references: [id], onDelete: Cascade)
   product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Order {
-  id            Int             @id @default(autoincrement())
-  customerId    Int?
-  outletId      Int
-  totalAmount   Float
-  paymentMethod PaymentMethod
-  status        OrderStatus
-  createdAt     DateTime        @default(now())
-  type          OrderType
-  customer      CustomerDetails? @relation(fields: [customerId], references: [id])
-  outlet        Outlet          @relation(fields: [outletId], references: [id])
-  items         OrderItem[]
+  id                Int              @id @default(autoincrement())
+  customerId        Int?
+  outletId          Int
+  totalAmount       Float
+  paymentMethod     PaymentMethod
+  status            OrderStatus
+  createdAt         DateTime         @default(now())
+  type              OrderType
+  deliveryDate      DateTime?
+  deliverySlot      DeliverySlot?
+  isPreOrder        Boolean          @default(false)
+  razorpayPaymentId String?
+  customer          CustomerDetails? @relation(fields: [customerId], references: [id])
+  outlet            Outlet           @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  items             OrderItem[]
 }
 
 model OrderItem {
-  id        Int     @id @default(autoincrement())
+  id        Int             @id @default(autoincrement())
   orderId   Int
   productId Int
   quantity  Int
   unitPrice Float
   status    OrderItemStatus @default(NOT_DELIVERED)
-  order     Order   @relation(fields: [orderId], references: [id])
-  product   Product @relation("ProductToOrderItems", fields: [productId], references: [id], onDelete: Cascade)
+  order     Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product         @relation("ProductToOrderItems", fields: [productId], references: [id], onDelete: Cascade)
 }
 
 model Wallet {
@@ -137,18 +141,18 @@ model Wallet {
   totalUsed      Float               @default(0)
   lastRecharged  DateTime?
   lastOrder      DateTime?
-  customer       CustomerDetails     @relation(fields: [customerId], references: [id])
+  customer       CustomerDetails     @relation(fields: [customerId], references: [id], onDelete: Cascade)
   transactions   WalletTransaction[]
 }
 
 model WalletTransaction {
-  id        Int           @id @default(autoincrement())
+  id        Int             @id @default(autoincrement())
   walletId  Int
   amount    Float
   method    PaymentMethod
+  createdAt DateTime        @default(now())
   status    WalletTransType
-  createdAt DateTime      @default(now())
-  wallet    Wallet        @relation(fields: [walletId], references: [id])
+  wallet    Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
 }
 
 model Expense {
@@ -161,7 +165,7 @@ model Expense {
   paidTo      String
   expenseDate DateTime
   createdAt   DateTime      @default(now())
-  outlet      Outlet        @relation(fields: [outletId], references: [id])
+  outlet      Outlet        @relation(fields: [outletId], references: [id], onDelete: Cascade)
 }
 
 model Ticket {
@@ -174,7 +178,7 @@ model Ticket {
   createdAt      DateTime        @default(now())
   resolvedAt     DateTime?
   resolutionNote String?
-  customer       CustomerDetails @relation(fields: [customerId], references: [id])
+  customer       CustomerDetails @relation(fields: [customerId], references: [id], onDelete: Cascade)
 }
 
 model Coupon {
@@ -202,7 +206,7 @@ model CouponUsage {
   coupon   Coupon   @relation(fields: [couponId], references: [id])
 }
 
-enum OrderType{
+enum OrderType {
   MANUAL
   APP
 }
@@ -264,7 +268,16 @@ enum StockAction {
   UPDATE
 }
 
-enum WalletTransType{
+enum WalletTransType {
   RECHARGE
   DEDUCT
+}
+
+enum DeliverySlot {
+  SLOT_11_12
+  SLOT_12_13
+  SLOT_13_14
+  SLOT_14_15
+  SLOT_15_16
+  SLOT_16_17
 }
