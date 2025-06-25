@@ -13,6 +13,7 @@ import arjectMiddleware from './middlewares/arcjet.middleware.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import staffRoutes from './routes/staff.js';
+import customerrouter from './routes/customer.js';
 
 app.use(cookieParser());
 
@@ -27,6 +28,7 @@ app.use(express.json());
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/staff', staffRoutes);
+app.use('/api/customer',customerrouter);
 app.use(errorMiddleware)
 
 app.get('/', (req, res) => {
