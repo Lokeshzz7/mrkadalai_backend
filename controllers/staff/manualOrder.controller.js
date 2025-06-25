@@ -59,14 +59,6 @@ export const addManualOrder = async (req, res) => {
           }
         });
 
-        await tx.stockHistory.create({
-          data: {
-            outletId,
-            productId: item.productId,
-            quantity: -item.quantity,
-            action: 'ORDER',
-          }
-        });
       }
 
       return createdOrder;

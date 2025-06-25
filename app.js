@@ -13,7 +13,7 @@ import arjectMiddleware from './middlewares/arcjet.middleware.js';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import staffRoutes from './routes/staff.js';
-import customerRouter from './routes/customer.js';
+import customerRouter from './routes/customerRoutes.js';
 
 app.use(cookieParser());
 
