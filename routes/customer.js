@@ -5,7 +5,7 @@ import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/
 const customerrouter = express.Router();
 
 customerrouter.get("/outlets/get-product/:outletId",authenticateToken,authorizeRoles('CUSTOMER'),getProducts)
-
+customerrouter.get("/outlets/customer-order/:outletId",authenticateToken,authorizeRoles('CUSTOMER'),CustomerAppOrder)
 
 
 export default  customerrouter;
