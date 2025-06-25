@@ -130,6 +130,7 @@ export const getOrder = async (req, res) => {
   }
 };
 
+
 export const updateOrder = async (req, res) => {
   const { orderId, orderItemId, status, outletId } = req.body;
 
@@ -138,7 +139,6 @@ export const updateOrder = async (req, res) => {
   }
 
   try {
-
     const order = await prisma.order.findFirst({
       where: {
         id: parseInt(orderId),
@@ -153,59 +153,66 @@ export const updateOrder = async (req, res) => {
       return res.status(404).json({ message: "Order not found for this outlet" });
     }
 
+    // === CANCELLED ===
     if (status === "CANCELLED") {
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { status: "CANCELLED" },
-      });
+      await prisma.$transaction([
+        prisma.order.update({
+          where: { id: order.id },
+          data: { status: "CANCELLED" },
+        }),
+      ]);
       return res.status(200).json({ message: "Order cancelled" });
     }
 
+    // === DELIVERED ===
     if (status === "DELIVERED") {
-      await prisma.orderItem.updateMany({
-        where: { orderId: order.id },
-        data: { status: "DELIVERED" },
-      });
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { status: "DELIVERED" },
-      });
+      await prisma.$transaction([
+        prisma.orderItem.updateMany({
+          where: { orderId: order.id },
+          data: { status: "DELIVERED" },
+        }),
+        prisma.order.update({
+          where: { id: order.id },
+          data: { status: "DELIVERED" },
+        }),
+      ]);
       return res.status(200).json({ message: "All items and order marked DELIVERED" });
     }
 
-    
+    // === PARTIALLY_DELIVERED ===
     if (status === "PARTIALLY_DELIVERED") {
-   
       const item = order.items.find(i => i.id === parseInt(orderItemId));
       if (!item) {
         return res.status(404).json({ message: "Order item not found in this order" });
       }
 
-      
+      // If item already delivered, just update order status
       if (item.status === "DELIVERED") {
-        await prisma.order.update({
-          where: { id: order.id },
-          data: { status: "PARTIALLY_DELIVERED" }
+        await prisma.$transaction([
+          prisma.order.update({
+            where: { id: order.id },
+            data: { status: "PARTIALLY_DELIVERED" }
+          })
+        ]);
+        return res.status(200).json({
+          message: "Order remains PARTIALLY_DELIVERED; item was already DELIVERED"
         });
-        return res.status(200).json({ message: "Order remains PARTIALLY_DELIVERED; item was already DELIVERED" });
       }
 
-      
-      await prisma.orderItem.update({
-        where: { id: item.id },
-        data: { status: "DELIVERED" }
-      });
-
-      
-      await prisma.order.update({
-        where: { id: order.id },
-        data: { status: "PARTIALLY_DELIVERED" }
-      });
+      await prisma.$transaction([
+        prisma.orderItem.update({
+          where: { id: item.id },
+          data: { status: "DELIVERED" }
+        }),
+        prisma.order.update({
+          where: { id: order.id },
+          data: { status: "PARTIALLY_DELIVERED" }
+        })
+      ]);
 
       return res.status(200).json({ message: "Order marked PARTIALLY_DELIVERED; one item delivered" });
     }
 
-    
     return res.status(400).json({ message: "Invalid status value" });
 
   } catch (err) {
@@ -213,3 +220,4 @@ export const updateOrder = async (req, res) => {
     return res.status(500).json({ message: "Server error while updating item status" });
   }
 };
+
