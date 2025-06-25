@@ -2,36 +2,78 @@ import prisma from "../../prisma/client.js";
 
 
 export const addManualOrder = async (req, res) => {
-  try {
-    const { outletId, totalAmount, paymentMethod, items } = req.body;
+  const { outletId, totalAmount, paymentMethod, items } = req.body;
 
+  if (!outletId || !totalAmount || !paymentMethod || !items || items.length === 0) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  try {
     
-    if (!outletId || !totalAmount || !paymentMethod || !items || items.length === 0) {
-      return res.status(400).json({ message: "Missing required fields" });
+    for (const item of items) {
+      const inventory = await prisma.inventory.findFirst({
+        where: {
+          outletId,
+          productId: item.productId
+        }
+      });
+
+      if (!inventory || inventory.quantity < item.quantity) {
+        return res.status(400).json({
+          message: `Insufficient inventory for product ID ${item.productId}`
+        });
+      }
     }
 
-    const order = await prisma.order.create({
-      data: {
-        outletId,
-        totalAmount,
-        paymentMethod,
-        status: 'PENDING',
-        type: 'MANUAL',
-        customerId: null,
-        items: {
-          create: items.map(item => ({
+    const order = await prisma.$transaction(async (tx) => {
+      // Create order and order items
+      const createdOrder = await tx.order.create({
+        data: {
+          outletId,
+          totalAmount,
+          paymentMethod,
+          status: 'PENDING',
+          type: 'MANUAL',
+          customerId: null,
+          items: {
+            create: items.map(item => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice
+            }))
+          }
+        },
+        include: { items: true }
+      });
+
+      for (const item of items) {
+        await tx.inventory.updateMany({
+          where: {
+            outletId,
+            productId: item.productId
+          },
+          data: {
+            quantity: {
+              decrement: item.quantity
+            }
+          }
+        });
+
+        await tx.stockHistory.create({
+          data: {
+            outletId,
             productId: item.productId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice
-          }))
-        }
-      },
-      include: {
-        items: true
+            quantity: -item.quantity,
+            action: 'ORDER',
+          }
+        });
       }
+
+      return createdOrder;
     });
 
     res.status(201).json({ message: "Manual order created", order });
+
   } catch (error) {
     console.error("Error creating manual order:", error);
     res.status(500).json({ message: "Internal server error" });

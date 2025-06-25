@@ -3,7 +3,7 @@ import express from "express";
 import { getProducts} from "../controllers/staff/manualOrder.controller.js";
 import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory } from "../controllers/customer/order.controller.js";
 import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/auth.middleware.js";
-
+import {customerAppOrder} from "../controllers/customer/order.controller.js";
 const customerRouter = express.Router();
 
 customerRouter.get("/outlets/get-product/:outletId",authenticateToken,authorizeRoles('CUSTOMER'),getProducts)
