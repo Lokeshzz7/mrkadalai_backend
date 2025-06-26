@@ -25,19 +25,19 @@ model Outlet {
   users        User[]
 }
 
-model User {
-  id           Int              @id @default(autoincrement())
-  email        String           @unique
-  name         String
-  password     String
-  role         Role             @default(CUSTOMER)
-  outletId     Int?
-  createdAt    DateTime         @default(now())
-  phone        String?
-  customerInfo CustomerDetails?
-  staffInfo    StaffDetails?
-  outlet       Outlet?          @relation(fields: [outletId], references: [id], onDelete: Cascade)
-}
+  model User {
+    id           Int              @id @default(autoincrement())
+    email        String           @unique
+    name         String
+    password     String
+    role         Role             @default(CUSTOMER)
+    outletId     Int?
+    createdAt    DateTime         @default(now())
+    phone        String?
+    customerInfo CustomerDetails?
+    staffInfo    StaffDetails?
+    outlet       Outlet?          @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  }
 
 model StaffDetails {
   id          Int               @id @default(autoincrement())
@@ -63,25 +63,46 @@ model CustomerDetails {
   orders      Order[]
   tickets     Ticket[]
   wallet      Wallet?
+  cart        Cart?
 }
 
 model Cart {
-  id Int @id @default(autoincrement())
+  id          Int         @id @default(autoincrement())
+  customerId  Int         @unique
+  customer    CustomerDetails @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items       CartItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 }
 
+model CartItem {
+  id        Int      @id @default(autoincrement())
+  cartId    Int
+  productId Int
+  quantity  Int
+
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(name: "ProductCartItems", fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId])
+}
+
+
 model Product {
-  id           Int            @id @default(autoincrement())
-  name         String         @unique
+  id           Int             @id @default(autoincrement())
+  name         String          @unique
   description  String?
   price        Float
   imageUrl     String?
   outletId     Int
   category     Category
   inventory    Inventory?
-  orderItems   OrderItem[]    @relation("ProductToOrderItems")
-  outlet       Outlet         @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]     @relation("ProductToOrderItems")
+  outlet       Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
   StockHistory StockHistory[]
+  cartItems    CartItem[]      @relation(name: "ProductCartItems")
 }
+
 
 model Inventory {
   id        Int     @id @default(autoincrement())

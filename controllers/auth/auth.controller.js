@@ -5,16 +5,13 @@ import { JWT_SECRET, JWT_EXPIRES_IN } from '../../config/env.js';
 
 
 export const signUp = async (req, res, next) => {
-  const { name, email, password, role, outletId, phone, yearOfStudy } = req.body;
+  const { name, email, password, role, outletId, phone } = req.body;
 
   try {
     if (!name || !email || !password || !role || !phone) {
       return res.status(400).json({ message: 'All fields are required' });
     }
 
-    if (role === "CUSTOMER" && !yearOfStudy) {
-      return res.status(400).json({ message: 'yearOfStudy is required for customer' });
-    }
 
     if (role !== "ADMIN" && !outletId) {
       return res.status(400).json({ message: 'Provide outletId for non-admin users' });
