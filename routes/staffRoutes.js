@@ -4,6 +4,7 @@ import { addManualOrder,getProducts } from '../controllers/staff/manualOrder.con
 import { getOrder, recentOrders, updateOrder } from '../controllers/staff/home.controller.js';
 import { getStocks,addStock,deductStock,stockHistory } from '../controllers/staff/inventory.controller.js';
 import { getRechargeHistory,addRecharge } from '../controllers/staff/wallet.controller.js';
+import { OutletCurrentOrder } from '../controllers/staff/notification.controller.js';
 import { getOrderHistory } from '../controllers/staff/orderHistory.controller.js';
 
 const staffRouter = express.Router();
@@ -25,6 +26,9 @@ staffRouter.get('/outlets/get-stocks/:outletId/',authenticateToken,authorizeRole
 staffRouter.post('/outlets/add-stock/',authenticateToken,authorizeRoles('STAFF'),addStock);
 staffRouter.post('/outlets/deduct-stock/',authenticateToken,authorizeRoles('STAFF'),deductStock);
 staffRouter.post('/outlets/get-stock-history',authenticateToken,authorizeRoles('STAFF'),stockHistory);
+
+//Notification Management
+staffRouter.get('/outlets/get-current-order/:outletId',authenticateToken,authorizeRoles('STAFF'),OutletCurrentOrder)
 
 //Recharge Management
 
