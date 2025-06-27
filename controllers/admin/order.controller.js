@@ -43,6 +43,7 @@ export const outletTotalOrders = async (req, res, next) => {
       status: order.status,
       customerName: order.customer?.user?.email || 'N/A',
       customerPhone: order.customer?.user?.phone || 'N/A',
+      type : order.type,
       items: order.items.map(item => ({
         productName: item.product.name,
         quantity: item.quantity,
