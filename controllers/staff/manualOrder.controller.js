@@ -2,7 +2,7 @@ import prisma from "../../prisma/client.js";
 
 
 export const addManualOrder = async (req, res) => {
-  const { outletId, totalAmount, paymentMethod, items } = req.body;
+  const { outletId, totalAmount, paymentMethod, items,status } = req.body;
 
   if (!outletId || !totalAmount || !paymentMethod || !items || items.length === 0) {
     return res.status(400).json({ message: "Missing required fields" });
@@ -32,14 +32,15 @@ export const addManualOrder = async (req, res) => {
           outletId,
           totalAmount,
           paymentMethod,
-          status: 'PENDING',
+          status: 'DELIVERED',
           type: 'MANUAL',
           customerId: null,
           items: {
             create: items.map(item => ({
               productId: item.productId,
               quantity: item.quantity,
-              unitPrice: item.unitPrice
+              unitPrice: item.unitPrice,
+              status : 'DELIVERED'
             }))
           }
         },

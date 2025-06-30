@@ -3,7 +3,7 @@ import prisma from "../../prisma/client.js";
 export const getOrderHistory = async (req, res) => {
   try {
     const outletId = Number(req.query.outletId);
-    const date = req.query.date; // Expecting 'YYYY-MM-DD'
+    const date = req.query.date;
 
     if (!outletId || !date) {
       return res.status(400).json({ message: 'outletId and date are required' });
@@ -63,6 +63,5 @@ export const getOrderHistory = async (req, res) => {
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
-
 
 
