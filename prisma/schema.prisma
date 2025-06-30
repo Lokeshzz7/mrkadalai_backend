@@ -64,7 +64,6 @@ model CustomerDetails {
   bio         String?
   orders      Order[]
   tickets     Ticket[]
-  favorites   Product[] @relation("CustomerFavorites") 
   wallet      Wallet?
   cart        Cart?
 }
@@ -102,7 +101,7 @@ model Product {
   outlet       Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
   StockHistory StockHistory[]
   cartItems    CartItem[]      @relation(name: "ProductCartItems")
-  favoredByCustomers CustomerDetails[] @relation("CustomerFavorites")
+
 }
 
 
