@@ -42,7 +42,9 @@ export const recentOrders = async (req, res) => {
       items: order.items.map(item => ({
         name: item.product.name,
         quantity: item.quantity,
+        unitPrice : item.unitPrice
       })),
+      totalAmount : order.totalAmount,
       createdAt: order.createdAt,
     }));
 
