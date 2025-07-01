@@ -58,14 +58,23 @@ export const rechargeWallet = async (req, res) => {
 
 export const recentTrans = async (req, res) => {
   try {
-    const customerId = req.user.id;
+    const userId = req.user.id;
 
-    
+    const customerDetails = await prisma.customerDetails.findUnique({
+      where: { userId },
+    });
+
+    if (!customerDetails) {
+      return res.status(404).json({ message: 'Customer details not found' });
+    }
+
+    const customerId = customerDetails.id;
+
     const wallet = await prisma.wallet.findUnique({
       where: { customerId },
       include: {
         transactions: {
-          orderBy: { createdAt: 'desc' }                       
+          orderBy: { createdAt: 'desc' }
         }
       }
     });
@@ -84,3 +93,4 @@ export const recentTrans = async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 };
+
