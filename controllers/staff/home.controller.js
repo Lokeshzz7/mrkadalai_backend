@@ -223,3 +223,141 @@ export const updateOrder = async (req, res) => {
   }
 };
 
+
+export const getHomeDetails = async (req, res) => {
+  try {
+    const outletId = parseInt(req.user.outletId);
+
+    
+    const orderStats = await prisma.order.groupBy({
+      by: ['type', 'deliverySlot'],
+      where: {
+        outletId,
+        status: {
+          in: ['DELIVERED', 'PARTIALLY_DELIVERED'],
+        },
+      },
+      _count: {
+        _all: true,
+      },
+      _sum: {
+        totalAmount: true,
+      },
+    });
+
+    let totalRevenue = 0;
+    let appOrders = 0;
+    let manualOrders = 0;
+    const slotCounts = {};
+
+    orderStats.forEach(stat => {
+      totalRevenue += stat._sum.totalAmount || 0;
+
+      if (stat.type === 'APP') appOrders += stat._count._all;
+      if (stat.type === 'MANUAL') manualOrders += stat._count._all;
+
+      if (stat.deliverySlot) {
+        if (!slotCounts[stat.deliverySlot]) slotCounts[stat.deliverySlot] = 0;
+        slotCounts[stat.deliverySlot] += stat._count._all;
+      }
+    });
+
+    let peakSlot = null;
+    let maxSlotCount = 0;
+    for (const [slot, count] of Object.entries(slotCounts)) {
+      if (count > maxSlotCount) {
+        peakSlot = slot;
+        maxSlotCount = count;
+      }
+    }
+
+   
+    const bestSellerAgg = await prisma.orderItem.groupBy({
+      by: ['productId'],
+      _sum: { quantity: true },
+      where: {
+        order: {
+          outletId,
+          status: {
+            in: ['DELIVERED', 'PARTIALLY_DELIVERED'],
+          },
+        },
+      },
+      orderBy: {
+        _sum: { quantity: 'desc' },
+      },
+      take: 1,
+    });
+
+    let bestSellerProduct = null;
+    if (bestSellerAgg.length > 0) {
+      const product = await prisma.product.findUnique({
+        where: { id: bestSellerAgg[0].productId },
+        select: { id: true, name: true, imageUrl: true },
+      });
+      bestSellerProduct = {
+        ...product,
+        quantitySold: bestSellerAgg[0]._sum.quantity,
+      };
+    }
+
+  
+  
+    const totalWalletRecharge = await prisma.wallet.aggregate({
+      _sum: {
+        totalRecharged: true,
+      },
+      where: {
+        customer: {
+          user: {
+            outletId: outletId,
+          },
+        },
+      },
+    });
+
+    const totalRechargedAmount = totalWalletRecharge._sum.totalRecharged || 0;
+
+    
+    const lowStock = await prisma.inventory.findMany({
+      where: {
+        outletId,
+        quantity: {
+          lt: prisma.inventory.fields.threshold,
+        },
+      },
+      include: {
+        product: {
+          select: {
+            id: true,
+            name: true,
+            imageUrl: true,
+          },
+        },
+      },
+    });
+
+    const lowStockProducts = lowStock.map(item => ({
+      productId: item.product.id,
+      name: item.product.name,
+      imageUrl: item.product.imageUrl,
+      quantity: item.quantity,
+      threshold: item.threshold,
+    }));
+
+  
+    return res.status(200).json({
+      totalRevenue,
+      appOrders,
+      manualOrders,
+      peakSlot,
+      bestSellerProduct,
+      totalRechargedAmount,
+      lowStockProducts,
+    });
+
+  } catch (error) {
+    console.error('Error in getHomeDetails:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};

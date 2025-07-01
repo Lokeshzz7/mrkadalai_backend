@@ -1,7 +1,7 @@
 import express  from'express';
 import { authenticateToken,authorizeRoles, restrictToStaff } from '../middlewares/auth.middleware.js';
 import { addManualOrder,getProducts } from '../controllers/staff/manualOrder.controller.js';
-import { getOrder, recentOrders, updateOrder } from '../controllers/staff/home.controller.js';
+import { getHomeDetails, getOrder, recentOrders, updateOrder } from '../controllers/staff/home.controller.js';
 import { getStocks,addStock,deductStock,stockHistory } from '../controllers/staff/inventory.controller.js';
 import { getRechargeHistory,addRecharge } from '../controllers/staff/wallet.controller.js';
 import { OutletCurrentOrder } from '../controllers/staff/notification.controller.js';
@@ -13,7 +13,7 @@ staffRouter.use(restrictToStaff)
 
 
 //Home management
-
+staffRouter.get('/outlets/get-home-data/',authenticateToken,authorizeRoles('STAFF'),getHomeDetails);
 staffRouter.get('/outlets/get-recent-orders/:outletId/',authenticateToken,authorizeRoles('STAFF'),recentOrders);
 staffRouter.get('/outlets/get-order/:outletId/:orderId/',authenticateToken,authorizeRoles('STAFF'),getOrder);
 staffRouter.put('/outlets/update-order/',authenticateToken,authorizeRoles('STAFF'),updateOrder);
