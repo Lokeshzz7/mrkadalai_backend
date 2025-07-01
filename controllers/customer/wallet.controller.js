@@ -5,8 +5,8 @@ import prisma from "../../prisma/client.js";
 export const rechargeWallet = async (req, res) => {
   try {
     const amount = parseFloat(req.body.amount);
-    const customerId = req.user.id;
     const paymentMethod = req.body.paymentMethod;
+    const userId = req.user.id;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Invalid amount' });
@@ -17,48 +17,32 @@ export const rechargeWallet = async (req, res) => {
       return res.status(400).json({ message: 'Invalid payment method' });
     }
 
-    
-    let wallet = await prisma.wallet.findUnique({
-      where: { customerId }
+    const customerDetails = await prisma.customerDetails.findUnique({
+      where: { userId },
     });
 
-    if (!wallet) {
-     
-      wallet = await prisma.wallet.create({
-        data: {
-          customerId,
-          balance: amount,
-          totalRecharged: amount,
-          lastRecharged: new Date(),
-          transactions: {
-            create: {
-              amount,
-              method: paymentMethod,
-              status: 'RECHARGE',
-            }
-          }
-        },
-        include: { transactions: true }
-      });
-    } else {
-
-      wallet = await prisma.wallet.update({
-        where: { customerId },
-        data: {
-          balance: { increment: amount },
-          totalRecharged: { increment: amount },
-          lastRecharged: new Date(),
-          transactions: {
-            create: {
-              amount,
-              method: paymentMethod,
-              status: 'RECHARGE'
-            }
-          }
-        },
-        include: { transactions: true }
-      });
+    if (!customerDetails) {
+      return res.status(404).json({ message: 'Customer details not found' });
     }
+
+    const customerId = customerDetails.id;
+
+    let wallet = await prisma.wallet.update({
+      where: { customerId },
+      data: {
+        balance: { increment: amount },
+        totalRecharged: { increment: amount },
+        lastRecharged: new Date(),
+        transactions: {
+          create: {
+            amount,
+            method: paymentMethod,
+            status: 'RECHARGE',
+          }
+        }
+      },
+      include: { transactions: true }
+    });
 
     res.status(200).json({
       message: 'Wallet recharged successfully',
@@ -71,16 +55,26 @@ export const rechargeWallet = async (req, res) => {
   }
 };
 
+
 export const recentTrans = async (req, res) => {
   try {
-    const customerId = req.user.id;
+    const userId = req.user.id;
 
-    
+    const customerDetails = await prisma.customerDetails.findUnique({
+      where: { userId },
+    });
+
+    if (!customerDetails) {
+      return res.status(404).json({ message: 'Customer details not found' });
+    }
+
+    const customerId = customerDetails.id;
+
     const wallet = await prisma.wallet.findUnique({
       where: { customerId },
       include: {
         transactions: {
-          orderBy: { createdAt: 'desc' }                       
+          orderBy: { createdAt: 'desc' }
         }
       }
     });

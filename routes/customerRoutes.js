@@ -4,7 +4,7 @@ import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory } 
 import { getProductsAndStocks } from "../controllers/customer/home.controller.js";
 import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 import { rechargeWallet,recentTrans } from "../controllers/customer/wallet.controller.js";
-import { addProductToCart,removeProductFromCart } from "../controllers/customer/cart.controller.js";
+import { addProductToCart,removeProductFromCart,getCart } from "../controllers/customer/cart.controller.js";
 import { editProfile } from "../controllers/customer/profile.controller.js";
 const customerRouter = express.Router();
 
@@ -22,6 +22,8 @@ customerRouter.get("/outlets/get-recent-recharge",authenticateToken,authorizeRol
 
 
 //Cart management
+// Add this route
+customerRouter.get("/outlets/get-cart", authenticateToken, authorizeRoles('CUSTOMER'), getCart);
 customerRouter.post("/outlets/add-product-cart",authenticateToken,authorizeRoles('CUSTOMER'),addProductToCart);
 customerRouter.delete("/outlets/delete-product-cart",authenticateToken,authorizeRoles,removeProductFromCart);
 

@@ -1,5 +1,41 @@
 import prisma from "../../prisma/client.js";
 
+export const getCart = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const customer = await prisma.customerDetails.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    const cart = await prisma.cart.findUnique({
+      where: { customerId: customer.id },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+      },
+    });
+
+    if (!cart) {
+      return res.status(200).json({ cart: null });
+    }
+
+    res.status(200).json({ cart });
+
+  } catch (error) {
+    console.error("Error fetching cart:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 export const updateCartItem = async (req, res) => {
   try {
     const { productId, quantity, action } = req.body;
