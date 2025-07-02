@@ -1,6 +1,6 @@
 
 import express from "express";
-import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory } from "../controllers/customer/order.controller.js";
+import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory,customerAppCancelOrder } from "../controllers/customer/order.controller.js";
 import { getProductsAndStocks } from "../controllers/customer/home.controller.js";
 import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 import { rechargeWallet,recentTrans } from "../controllers/customer/wallet.controller.js";
@@ -15,6 +15,7 @@ customerRouter.get("/outlets/get-product/",authenticateToken,authorizeRoles('CUS
 customerRouter.post("/outlets/customer-order/",authenticateToken,authorizeRoles('CUSTOMER'),customerAppOrder)
 customerRouter.get("/outlets/customer-ongoing-order/",authenticateToken,authorizeRoles('CUSTOMER'),customerAppOngoingOrderList)
 customerRouter.get("/outlets/customer-order-history/",authenticateToken,authorizeRoles('CUSTOMER'),customerAppOrderHistory)
+customerRouter.put("/outlets/customer-cancel-order/:orderId", authenticateToken, authorizeRoles('CUSTOMER'), customerAppCancelOrder);
 
 //Wallet management
 customerRouter.post("/outlets/recharge-wallet",authenticateToken,authorizeRoles('CUSTOMER'),rechargeWallet);

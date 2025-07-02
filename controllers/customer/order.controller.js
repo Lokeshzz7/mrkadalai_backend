@@ -140,13 +140,17 @@ export const customerAppOrder = async (req, res) => {
 
 export const customerAppOngoingOrderList = async (req, res) => {
   try {
-    const customerId = req.user.id;
-    
+    const userId = req.user.id;
+    const customer = await prisma.customerDetails.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
 
-    if (!customerId) {
-      return res.status(400).json({ message: "Customer ID is required" });
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
     }
 
+    const customerId = customer.id;
     const orders = await prisma.order.findMany({
       where: {
         customerId,
@@ -192,17 +196,23 @@ export const customerAppOngoingOrderList = async (req, res) => {
 
 export const customerAppOrderHistory = async (req, res) => {
   try {
-    const customerId  = req.user.id; 
+    const userId = req.user.id;
+    const customer = await prisma.customerDetails.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
 
-    if (!customerId) {
-      return res.status(400).json({ message: "Customer ID is required" });
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
     }
+
+    const customerId = customer.id;
 
     const orders = await prisma.order.findMany({
       where: {
         customerId,
         status: {
-          in: ['COMPLETED', 'CANCELLED'],
+          in: ['DELIVERED', 'CANCELLED'],
         },
       },
       include: {
@@ -231,14 +241,169 @@ export const customerAppOrderHistory = async (req, res) => {
       },
     });
 
-    if (!orders || orders.length === 0) {
-      return res.status(200).json({ message: "No completed or cancelled orders found", orders: [] });
-    }
-
     res.status(200).json({ message: "Order history retrieved", orders });
   } catch (error) {
-    console.error("Error retrieving order history:", error);
+    console.error("Error retrieving order history:", error.message, error.stack);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
+
+export const customerAppCancelOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.id;
+
+    if (!orderId || isNaN(parseInt(orderId))) {
+      return res.status(400).json({ message: "Invalid order ID" });
+    }
+
+    const customer = await prisma.customerDetails.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        id: parseInt(orderId),
+        customerId: customer.id,
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
+        outlet: {
+          select: {
+            id: true,
+            name: true,
+            address: true,
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    if (order.status !== 'PENDING') {
+      return res.status(400).json({ 
+        message: `Cannot cancel order. Order status is ${order.status}` 
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const cancelledOrder = await tx.order.update({
+        where: { id: parseInt(orderId) },
+        data: { 
+          status: 'CANCELLED',
+        },
+        include: {
+          items: {
+            include: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  price: true,
+                },
+              },
+            },
+          },
+          outlet: {
+            select: {
+              id: true,
+              name: true,
+              address: true,
+            },
+          },
+        },
+      });
+
+      for (const item of order.items) {
+        await tx.inventory.updateMany({
+          where: {
+            productId: item.productId,
+            outletId: order.outletId,
+          },
+          data: {
+            quantity: {
+              increment: item.quantity,
+            },
+          },
+        });
+
+        await tx.stockHistory.create({
+          data: {
+            productId: item.productId,
+            outletId: order.outletId,
+            quantity: item.quantity,
+            action: 'ADD',
+            timestamp: new Date(),
+          },
+        });
+      }
+
+      if (order.paymentMethod === 'WALLET' || order.paymentMethod === 'UPI' || order.paymentMethod === 'CARD') {
+        let wallet = await tx.wallet.findUnique({
+          where: { customerId: customer.id },
+        });
+
+        if (!wallet) {
+          wallet = await tx.wallet.create({
+            data: {
+              customerId: customer.id,
+              balance: 0,
+              totalRecharged: 0,
+              totalUsed: 0,
+            },
+          });
+        }
+
+        await tx.wallet.update({
+          where: { customerId: customer.id },
+          data: {
+            balance: {
+              increment: order.totalAmount,
+            },
+          },
+        });
+
+        await tx.walletTransaction.create({
+          data: {
+            walletId: wallet.id,
+            amount: order.totalAmount,
+            method: order.paymentMethod,
+            status: 'RECHARGE',
+            createdAt: new Date(),
+          },
+        });
+      }
+
+      return cancelledOrder;
+    });
+
+    res.status(200).json({ 
+      message: "Order cancelled successfully", 
+      order: result,
+      refundAmount: order.totalAmount,
+      refundMethod: order.paymentMethod === 'CASH' ? 'CASH' : 'WALLET'
+    });
+
+  } catch (error) {
+    console.error("Error cancelling order:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
