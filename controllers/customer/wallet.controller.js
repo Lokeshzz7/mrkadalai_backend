@@ -94,3 +94,89 @@ export const recentTrans = async (req, res) => {
   }
 };
 
+export const getWalletDetails = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const customerDetails = await prisma.customerDetails.findUnique({
+      where: { userId },
+    });
+
+    if (!customerDetails) {
+      return res.status(404).json({ message: 'Customer details not found' });
+    }
+
+    const customerId = customerDetails.id;
+
+    let wallet = await prisma.wallet.findUnique({
+      where: { customerId },
+    });
+
+    if (!wallet) {
+      wallet = await prisma.wallet.create({
+        data: {
+          customerId,
+          balance: 0,
+          totalRecharged: 0,
+          totalUsed: 0,
+        }
+      });
+    }
+
+    res.status(200).json({
+      message: 'Wallet details fetched successfully',
+      wallet: {
+        balance: wallet.balance,
+        totalRecharged: wallet.totalRecharged,
+        totalUsed: wallet.totalUsed,
+        lastRecharged: wallet.lastRecharged,
+        lastOrder: wallet.lastOrder
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching wallet details:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getRechargeHistory = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const customerDetails = await prisma.customerDetails.findUnique({
+      where: { userId },
+    });
+
+    if (!customerDetails) {
+      return res.status(404).json({ message: 'Customer details not found' });
+    }
+
+    const customerId = customerDetails.id;
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { customerId },
+      include: {
+        transactions: {
+          where: {
+            status: 'RECHARGE' // Only recharge transactions
+          },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!wallet) {
+      return res.status(404).json({ message: 'Wallet not found' });
+    }
+
+    res.status(200).json({
+      message: 'Recharge history fetched successfully',
+      rechargeHistory: wallet.transactions
+    });
+
+  } catch (error) {
+    console.error('Error fetching recharge history:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};

@@ -3,7 +3,7 @@ import express from "express";
 import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory,customerAppCancelOrder } from "../controllers/customer/order.controller.js";
 import { getProductsAndStocks } from "../controllers/customer/home.controller.js";
 import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/auth.middleware.js";
-import { rechargeWallet,recentTrans } from "../controllers/customer/wallet.controller.js";
+import { rechargeWallet,recentTrans,getWalletDetails,getRechargeHistory } from "../controllers/customer/wallet.controller.js";
 import { getCart, updateCartItem } from "../controllers/customer/cart.controller.js";
 import { editProfile } from "../controllers/customer/profile.controller.js";
 const customerRouter = express.Router();
@@ -20,6 +20,8 @@ customerRouter.put("/outlets/customer-cancel-order/:orderId", authenticateToken,
 //Wallet management
 customerRouter.post("/outlets/recharge-wallet",authenticateToken,authorizeRoles('CUSTOMER'),rechargeWallet);
 customerRouter.get("/outlets/get-recent-recharge",authenticateToken,authorizeRoles('CUSTOMER'),recentTrans);
+customerRouter.get("/outlets/get-wallet-details", authenticateToken, authorizeRoles('CUSTOMER'), getWalletDetails);
+customerRouter.get("/outlets/get-recharge-history", authenticateToken, authorizeRoles('CUSTOMER'), getRechargeHistory);
 
 
 //Cart management
