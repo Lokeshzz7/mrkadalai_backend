@@ -26,10 +26,9 @@ customerRouter.get("/outlets/get-recharge-history", authenticateToken, authorize
 
 //Cart management
 customerRouter.put("/outlets/update-cart-item",authenticateToken,authorizeRoles('CUSTOMER'),updateCartItem);
-// Add this route
 customerRouter.get("/outlets/get-cart", authenticateToken, authorizeRoles('CUSTOMER'), getCart);
 
 //Profile management
-customerRouter.get("/outlets/get-profile",authenticateToken,authorizeRoles('CUSTOMER'),editProfile);
+customerRouter.put("/outlets/edit-profile",authenticateToken,authorizeRoles('CUSTOMER'),editProfile);
 
-export default  customerRouter;
+export default customerRouter;

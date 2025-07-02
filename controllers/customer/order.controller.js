@@ -2,141 +2,250 @@ import prisma from "../../prisma/client.js";
 
 export const customerAppOrder = async (req, res) => {
   try {
-    const {
-      outletId,
-      customerId,
-      totalAmount,
-      paymentMethod,
-      deliveryDate,
-      deliverySlot,
-      razorpayPaymentId,
-      items,
-    } = req.body;
+    const { totalAmount, paymentMethod, deliverySlot, items, outletId } = req.body;
+    const userId = req.user.id;
 
-    if (
-      !customerId || !outletId || !totalAmount || !paymentMethod ||
-      !deliveryDate || !deliverySlot || !items || !Array.isArray(items) || items.length === 0
-    ) {
-      return res.status(400).json({ message: "Missing or invalid required fields" });
+    if (!totalAmount || !paymentMethod || !deliverySlot || !items || !Array.isArray(items) || items.length === 0 || !outletId) {
+      return res.status(400).json({ 
+        message: "Invalid input: totalAmount, paymentMethod, deliverySlot, outletId, and items are required" 
+      });
     }
 
-    const deliveryDateObj = new Date(deliveryDate);
-    if (isNaN(deliveryDateObj.getTime())) {
-      return res.status(400).json({ message: "Invalid delivery date format" });
+    if (typeof outletId !== 'number' || outletId <= 0) {
+      return res.status(400).json({ 
+        message: "Invalid outletId: must be a positive number" 
+      });
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const deliveryDateNormalized = new Date(deliveryDateObj);
-    deliveryDateNormalized.setHours(0, 0, 0, 0);
-    const isPreOrder = deliveryDateNormalized > today;
-
-    const slotMap = {
-      "11:00-12:00": "SLOT_11_12",
-      "12:00-13:00": "SLOT_12_13",
-      "13:00-14:00": "SLOT_13_14",
-      "14:00-15:00": "SLOT_14_15",
-      "15:00-16:00": "SLOT_15_16",
-      "16:00-17:00": "SLOT_16_17",
-    };
-    const normalizedSlot = slotMap[deliverySlot] || deliverySlot;
-    const validSlots = Object.values(slotMap);
-    if (!validSlots.includes(normalizedSlot)) {
-      return res.status(400).json({ message: "Invalid delivery slot" });
-    }
-
-    const validPaymentMethods = ["UPI", "CARD", "CASH", "WALLET"];
+    const validPaymentMethods = ['WALLET', 'UPI', 'CARD'];
     if (!validPaymentMethods.includes(paymentMethod)) {
-      return res.status(400).json({ message: "Invalid payment method" });
+      return res.status(400).json({ 
+        message: "Invalid payment method" 
+      });
+    }
+    const validDeliverySlots = ['SLOT_11_12', 'SLOT_12_13', 'SLOT_13_14', 'SLOT_14_15', 'SLOT_15_16', 'SLOT_16_17'];
+    if (!validDeliverySlots.includes(deliverySlot)) {
+      return res.status(400).json({ 
+        message: "Invalid delivery slot" 
+      });
     }
 
-    for (const item of items) {
-      if (!item.productId || !item.quantity || !item.unitPrice || item.quantity <= 0) {
-        return res.status(400).json({ message: "Invalid order items" });
-      }
+    const outlet = await prisma.outlet.findUnique({
+      where: { id: outletId },
+      select: { id: true, isActive: true, name: true }
+    });
+
+    if (!outlet) {
+      return res.status(404).json({ message: "Outlet not found" });
     }
 
-   
-    for (const item of items) {
-      const inventory = await prisma.inventory.findFirst({
-        where: {
-          productId: item.productId,
-          outletId: outletId,
-        },
+    if (!outlet.isActive) {
+      return res.status(400).json({ message: "Selected outlet is currently inactive" });
+    }
+
+    const customer = await prisma.customerDetails.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    const customerId = customer.id;
+
+    let walletTransaction = null;
+    if (paymentMethod === 'WALLET') {
+      const wallet = await prisma.wallet.findUnique({
+        where: { customerId }
       });
 
-      if (!inventory || inventory.quantity < item.quantity) {
-        return res.status(400).json({
-          message: `Insufficient inventory for product ID ${item.productId}`,
+      if (!wallet) {
+        return res.status(404).json({ message: "Wallet not found" });
+      }
+
+      if (wallet.balance < totalAmount) {
+        return res.status(400).json({ 
+          message: "Insufficient wallet balance", 
+          availableBalance: wallet.balance,
+          requiredAmount: totalAmount
         });
       }
+
+      // Deduct amount from wallet
+      await prisma.wallet.update({
+        where: { customerId },
+        data: {
+          balance: wallet.balance - totalAmount,
+          totalUsed: wallet.totalUsed + totalAmount,
+          lastOrder: new Date()
+        }
+      });
+
+      // Create wallet transaction record
+      walletTransaction = await prisma.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          amount: -totalAmount,
+          method: 'WALLET',
+          status: 'DEDUCT'
+        }
+      });
     }
 
-   
+    const deliveryDate = new Date();
+    deliveryDate.setHours(0, 0, 0, 0); 
+
     const order = await prisma.order.create({
       data: {
         customerId,
-        outletId,
+        outletId, 
         totalAmount,
         paymentMethod,
-        status: "PENDING",
-        type: "APP",
-        deliveryDate: deliveryDateObj,
-        deliverySlot: normalizedSlot,
-        isPreOrder,
-        razorpayPaymentId,
+        status: 'PENDING',
+        type: 'APP',
+        deliveryDate,
+        deliverySlot,
+        isPreOrder: false,
         items: {
           create: items.map(item => ({
             productId: item.productId,
             quantity: item.quantity,
             unitPrice: item.unitPrice,
-            status: "NOT_DELIVERED",
-          })),
-        },
+            status: 'NOT_DELIVERED'
+          }))
+        }
       },
       include: {
         items: {
           include: {
-            product: {
+            product: true
+          }
+        },
+        customer: {
+          include: {
+            user: {
               select: {
-                id: true,
                 name: true,
-                price: true,
-              },
-            },
-          },
+                email: true,
+                phone: true
+              }
+            }
+          }
         },
         outlet: {
           select: {
             id: true,
             name: true,
-            address: true,
-          },
-        },
-      },
+            address: true
+          }
+        }
+      }
     });
 
-    for (const item of items) {
-      await prisma.inventory.updateMany({
-        where: {
-          productId: item.productId,
-          outletId: outletId,
-        },
-        data: {
-          quantity: {
-            decrement: item.quantity,
-          },
-        },
+    const cart = await prisma.cart.findUnique({
+      where: { customerId }
+    });
+
+    if (cart) {
+      await prisma.cartItem.deleteMany({
+        where: { cartId: cart.id }
       });
     }
+    for (const item of items) {
+      const inventory = await prisma.inventory.findUnique({
+        where: { productId: item.productId }
+      });
 
-    res.status(201).json({ message: "Order created", order });
+      if (inventory && inventory.quantity >= item.quantity) {
+        await prisma.inventory.update({
+          where: { productId: item.productId },
+          data: {
+            quantity: inventory.quantity - item.quantity
+          }
+        });
+
+        await prisma.stockHistory.create({
+          data: {
+            productId: item.productId,
+            outletId, 
+            quantity: item.quantity,
+            action: 'REMOVE'
+          }
+        });
+      }
+    }
+
+    res.status(201).json({
+      message: 'Order placed successfully',
+      order: {
+        id: order.id,
+        orderNumber: `#ORD-${order.id.toString().padStart(6, '0')}`,
+        totalAmount: order.totalAmount,
+        paymentMethod: order.paymentMethod,
+        status: order.status,
+        deliverySlot: order.deliverySlot,
+        deliveryDate: order.deliveryDate,
+        createdAt: order.createdAt,
+        items: order.items,
+        customer: order.customer,
+        outlet: order.outlet
+      },
+      walletTransaction: walletTransaction ? {
+        id: walletTransaction.id,
+        amount: walletTransaction.amount,
+        method: walletTransaction.method,
+        status: walletTransaction.status,
+        createdAt: walletTransaction.createdAt
+      } : null
+    });
+
   } catch (error) {
     console.error("Error creating order:", error);
-    res.status(500).json({ message: "Internal server error" });
+    
+    if (error.code && paymentMethod === 'WALLET') {
+      try {
+        const customer = await prisma.customerDetails.findUnique({
+          where: { userId: req.user.id },
+          select: { id: true }
+        });
+
+        if (customer) {
+          const wallet = await prisma.wallet.findUnique({
+            where: { customerId: customer.id }
+          });
+
+          if (wallet) {
+            await prisma.wallet.update({
+              where: { customerId: customer.id },
+              data: {
+                balance: wallet.balance + totalAmount,
+                totalUsed: Math.max(0, wallet.totalUsed - totalAmount)
+              }
+            });
+
+            // Create refund transaction record
+            await prisma.walletTransaction.create({
+              data: {
+                walletId: wallet.id,
+                amount: totalAmount,
+                method: 'WALLET',
+                status: 'RECHARGE'
+              }
+            });
+          }
+        }
+      } catch (refundError) {
+        console.error("Error refunding wallet:", refundError);
+      }
+    }
+
+    return res.status(500).json({ 
+      message: "Failed to place order", 
+      error: error.message 
+    });
   }
 };
-
 
 export const customerAppOngoingOrderList = async (req, res) => {
   try {

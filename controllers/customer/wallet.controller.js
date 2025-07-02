@@ -55,7 +55,6 @@ export const rechargeWallet = async (req, res) => {
   }
 };
 
-
 export const recentTrans = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -159,7 +158,7 @@ export const getRechargeHistory = async (req, res) => {
       include: {
         transactions: {
           where: {
-            status: 'RECHARGE' // Only recharge transactions
+            status: 'RECHARGE' 
           },
           orderBy: { createdAt: 'desc' }
         }
