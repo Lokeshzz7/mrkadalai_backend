@@ -6,6 +6,11 @@ import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/
 import { rechargeWallet,recentTrans,getWalletDetails,getRechargeHistory } from "../controllers/customer/wallet.controller.js";
 import { getCart, updateCartItem } from "../controllers/customer/cart.controller.js";
 import { editProfile } from "../controllers/customer/profile.controller.js";
+import { 
+  createTicket, 
+  getCustomerTickets, 
+  getTicketDetails 
+} from "../controllers/customer/ticket.controller.js";
 const customerRouter = express.Router();
 
 // Products Fetch 
@@ -30,5 +35,10 @@ customerRouter.get("/outlets/get-cart", authenticateToken, authorizeRoles('CUSTO
 
 //Profile management
 customerRouter.put("/outlets/edit-profile",authenticateToken,authorizeRoles('CUSTOMER'),editProfile);
+
+//Ticket Management
+customerRouter.post("/outlets/tickets/create", authenticateToken, authorizeRoles('CUSTOMER'), createTicket);
+customerRouter.get("/outlets/tickets", authenticateToken, authorizeRoles('CUSTOMER'), getCustomerTickets);
+customerRouter.get("/outlets/tickets/:ticketId", authenticateToken, authorizeRoles('CUSTOMER'), getTicketDetails);
 
 export default customerRouter;
