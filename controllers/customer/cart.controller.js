@@ -18,7 +18,11 @@ export const getCart = async (req, res) => {
       include: {
         items: {
           include: {
-            product: true,
+            product: {
+              include: {
+                inventory: true
+              }
+            }
           },
         },
       },
