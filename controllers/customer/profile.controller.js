@@ -1,14 +1,13 @@
 import prisma from "../../prisma/client.js";
 
 
-
 export const editProfile = async (req, res) => {
-  const { customerId, name, phone, email, bio } = req.body;
+  const { name, phone, email, bio, yearOfStudy, degree } = req.body;
+  const userId = req.user.id;
 
   try {
-
     const existingUser = await prisma.user.findUnique({
-      where: { id: customerId },
+      where: { id: userId },
       include: { customerInfo: true }
     });
 
@@ -16,9 +15,8 @@ export const editProfile = async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-  
     const updatedUser = await prisma.user.update({
-      where: { id: customerId },
+      where: { id: userId },
       data: {
         name,
         phone,
@@ -26,6 +24,8 @@ export const editProfile = async (req, res) => {
         customerInfo: {
           update: {
             bio,
+            yearOfStudy,
+            degree,
           },
         },
       },
@@ -41,3 +41,33 @@ export const editProfile = async (req, res) => {
   }
 };
 
+export const getProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        customerInfo: true,
+      },
+    });
+
+    if (!user || !user.customerInfo) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    res.status(200).json({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      bio: user.customerInfo.bio,
+      yearOfStudy: user.customerInfo.yearOfStudy,
+      degree: user.customerInfo.degree,
+      // add other fields as needed
+    });
+  } catch (error) {
+    console.error("Get profile error:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};

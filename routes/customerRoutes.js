@@ -5,7 +5,7 @@ import { getProductsAndStocks } from "../controllers/customer/home.controller.js
 import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 import { rechargeWallet,recentTrans,getWalletDetails,getRechargeHistory } from "../controllers/customer/wallet.controller.js";
 import { getCart, updateCartItem } from "../controllers/customer/cart.controller.js";
-import { editProfile } from "../controllers/customer/profile.controller.js";
+import { editProfile, getProfile } from "../controllers/customer/profile.controller.js";
 import { 
   createTicket, 
   getCustomerTickets, 
@@ -35,6 +35,8 @@ customerRouter.get("/outlets/get-cart", authenticateToken, authorizeRoles('CUSTO
 
 //Profile management
 customerRouter.put("/outlets/edit-profile",authenticateToken,authorizeRoles('CUSTOMER'),editProfile);
+customerRouter.get("/outlets/get-profile",authenticateToken,authorizeRoles('CUSTOMER'),getProfile);
+
 
 //Ticket Management
 customerRouter.post("/outlets/tickets/create", authenticateToken, authorizeRoles('CUSTOMER'), createTicket);
