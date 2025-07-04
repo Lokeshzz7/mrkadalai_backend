@@ -202,6 +202,7 @@ model Ticket {
   resolvedAt     DateTime?
   resolutionNote String?
   customer       CustomerDetails @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  imageUrl       String?         // For storing image URL
 }
 
 model Coupon {
