@@ -10,8 +10,8 @@ datasource db {
 model Outlet {
   id           Int            @id @default(autoincrement())
   name         String
-  address      String
-  email        String         @unique
+  address      String?
+  email        String?        @unique
   isActive     Boolean        @default(true)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
@@ -30,8 +30,9 @@ model Outlet {
     id           Int              @id @default(autoincrement())
     email        String           @unique
     name         String
-    password     String
+    password     String?
     role         Role             @default(CUSTOMER)
+    googleId     String? @unique
     outletId     Int?
     createdAt    DateTime         @default(now())
     phone        String?
@@ -59,7 +60,7 @@ model StaffPermission {
 model CustomerDetails {
   id          Int      @id @default(autoincrement())
   userId      Int      @unique
-  yearOfStudy Int
+  yearOfStudy Int?
   user        User     @relation(fields: [userId], references: [id], onDelete:  Cascade)
   degree     typeOfDegree?
   bio         String?

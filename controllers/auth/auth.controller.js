@@ -1,20 +1,26 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import prisma from '../../prisma/client.js';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../../config/env.js';
 
+const client = new OAuth2Client({
+  clientId: process.env.GOOGLE_CLIENT_ID,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  redirectUri: 'http://localhost:5500/api/auth/google/callback',
+});
+
 
 export const signUp = async (req, res, next) => {
-  const { name, email, password, role, outletId, phone } = req.body;
+  const { name, email, password, retypePassword, outletId, phone, yearOfStudy } = req.body;
 
   try {
-    if (!name || !email || !password || !role || !phone) {
-      return res.status(400).json({ message: 'All fields are required' });
+    if (!name || !email || !password || !retypePassword || !outletId || !phone) {
+      return res.status(400).json({ message: 'Name, email, password, retype password, outlet ID, and phone are required' });
     }
 
-
-    if (role !== "ADMIN" && !outletId) {
-      return res.status(400).json({ message: 'Provide outletId for non-admin users' });
+    if (password !== retypePassword) {
+      return res.status(400).json({ message: 'Passwords do not match' });
     }
 
     const existingUser = await prisma.user.findUnique({ where: { email } });
@@ -29,46 +35,36 @@ export const signUp = async (req, res, next) => {
         name,
         email,
         password: hashedPassword,
-        role,
+        role: 'CUSTOMER',
         phone,
-        outletId: role !== 'ADMIN' ? outletId : null,
-        customerInfo: role === "CUSTOMER" ? {
+        outletId,
+        customerInfo: {
           create: {
-            yearOfStudy,
+            yearOfStudy: yearOfStudy ? parseInt(yearOfStudy, 10) : null,
             wallet: {
               create: {
                 balance: 0,
                 totalRecharged: 0,
-                totalUsed: 0
-              }
-            }
-          }
-        } : undefined
+                totalUsed: 0,
+              },
+            },
+            cart: {
+              create: {},
+            },
+          },
+        },
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        outletId: true,
-        customerInfo: {
-          select: {
-            id: true,
-            yearOfStudy: true,
-            wallet: {
-              select: {
-                id: true,
-                balance: true
-              }
-            }
-          }
-        }
-      }
+      include: {
+        customerInfo: { include: { wallet: true, cart: true } },
+        outlet: true,
+      },
     });
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
-    });
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, outletId: user.outletId },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -77,13 +73,25 @@ export const signUp = async (req, res, next) => {
       maxAge: 1000 * 60 * 60 * 24 * 7,
     });
 
-    res.status(201).json({
-      message: 'User created successfully',
-      user,
-    });
+    const response = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      outletId: user.outletId,
+      outlet: user.outlet,
+      customerDetails: user.customerInfo ? {
+        id: user.customerInfo.id,
+        yearOfStudy: user.customerInfo.yearOfStudy,
+        wallet: user.customerInfo.wallet,
+        cart: user.customerInfo.cart,
+      } : undefined,
+    };
 
+    res.status(201).json({ message: 'User created successfully', user: response });
   } catch (error) {
-    console.error("Signup error:", error);
+    console.error('Signup error:', error);
     next(error);
   }
 };
@@ -96,21 +104,29 @@ export const signIn = async (req, res, next) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        customerInfo: { include: { wallet: true, cart: true } },
+        staffInfo: { include: { permissions: true } },
+        outlet: true,
+      },
+    });
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    
-
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
-      expiresIn: JWT_EXPIRES_IN,
-    });
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, outletId: user.outletId },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -119,22 +135,33 @@ export const signIn = async (req, res, next) => {
       maxAge: 1000 * 60 * 60 * 24 * 7,
     });
 
-    res.status(200).json({
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        outletId: user.outletId,
-      },
-    });
+    const response = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      outletId: user.outletId,
+      outlet: user.outlet,
+      customerDetails: user.customerInfo ? {
+        id: user.customerInfo.id,
+        yearOfStudy: user.customerInfo.yearOfStudy,
+        wallet: user.customerInfo.wallet,
+        cart: user.customerInfo.cart,
+      } : undefined,
+      staffDetails: user.staffInfo ? {
+        id: user.staffInfo.id,
+        staffRole: user.staffInfo.staffRole,
+        permissions: user.staffInfo.permissions,
+      } : undefined,
+    };
+
+    res.status(200).json({ message: 'Login successful', user: response });
   } catch (error) {
-    console.error("Login error:", error);
+    console.error('Login error:', error);
     next(error);
   }
 };
-
 
 export const staffSignIn = async (req, res, next) => {
   const { email, password } = req.body;
@@ -144,70 +171,37 @@ export const staffSignIn = async (req, res, next) => {
       return res.status(400).json({ message: 'Email and password are required' });
     }
 
-    
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
-        staffInfo: {
-          include: {
-            permissions: true
-          }
-        },
-        outlet: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            phone: true,
-            email: true
-          }
-        }
-      }
+        staffInfo: { include: { permissions: true } },
+        outlet: true,
+      },
     });
 
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+    if (!user || user.role !== 'STAFF') {
+      return res.status(401).json({ message: 'Invalid staff credentials' });
     }
 
-    
-    if (user.role !== 'STAFF') {
-      return res.status(403).json({ message: 'Access denied. Staff credentials required.' });
-    }
-
-   
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+      return res.status(401).json({ message: 'Invalid staff credentials' });
     }
 
-   
     const token = jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        outletId: user.outletId
-      },
+      { id: user.id, email: user.email, role: user.role, outletId: user.outletId },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
 
-    
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+      maxAge: 1000 * 60 * 60 * 24 * 7,
     });
 
-    
-    const permissions = user.staffInfo?.permissions?.map(perm => ({
-      type: perm.type,
-      isGranted: perm.isGranted
-    })) || [];
-
-    
-    const staffResponse = {
+    const response = {
       id: user.id,
       name: user.name,
       email: user.email,
@@ -215,21 +209,162 @@ export const staffSignIn = async (req, res, next) => {
       role: user.role,
       outletId: user.outletId,
       outlet: user.outlet,
-      staffDetails: {
-        id: user.staffInfo?.id,
-        staffRole: user.staffInfo?.staffRole,
-        permissions: permissions
-      }
+      staffDetails: user.staffInfo ? {
+        id: user.staffInfo.id,
+        staffRole: user.staffInfo.staffRole,
+        permissions: user.staffInfo.permissions,
+      } : undefined,
     };
 
-    res.status(200).json({
-      message: 'Staff login successful',
-      user: staffResponse,
+    res.status(200).json({ message: 'Staff login successful', user: response });
+  } catch (error) {
+    console.error('Staff login error:', error);
+    next(error);
+  }
+};
+
+export const googleSignIn = async (req, res, next) => {
+  try {
+    const { code, state } = req.query;
+    if (!code) {
+      return res.status(400).json({ message: 'Authorization code missing' });
+    }
+
+    console.log('Received OAuth code:', code);
+    console.log('Received state:', state);
+
+    // Validate state
+    if (!state || !req.session.state) {
+      return res.status(400).json({ message: 'Invalid or missing state parameter' });
+    }
+    let parsedState;
+    try {
+      parsedState = JSON.parse(state);
+    } catch {
+      parsedState = { csrf: state };
+    }
+    if (parsedState.csrf !== req.session.state && state !== req.session.state) {
+      return res.status(400).json({ message: 'State mismatch' });
+    }
+
+    const { tokens } = await client.getToken({
+      code,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: 'http://localhost:5500/api/auth/google/callback',
     });
 
+    console.log('Received tokens:', tokens);
+
+    const ticket = await client.verifyIdToken({
+      idToken: tokens.id_token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name } = payload;
+
+    let user = await prisma.user.findUnique({
+      where: { email },
+      include: {
+        customerInfo: { include: { wallet: true, cart: true } },
+        staffInfo: { include: { permissions: true } },
+        outlet: true,
+      },
+    });
+
+    const isSignup = parsedState.outletId || parsedState.phone;
+    const outletId = parsedState.outletId ? Number(parsedState.outletId) : null;
+    const phone = parsedState.phone || '';
+
+    if (isSignup && !outletId) {
+      return res.status(400).json({ message: 'Outlet ID (college) is required for signup' });
+    }
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          email,
+          name,
+          role: 'CUSTOMER',
+          googleId,
+          phone,
+          password: null,
+          outletId,
+          customerInfo: {
+            create: {
+              yearOfStudy: null, // Optional, can be updated later
+              wallet: {
+                create: {
+                  balance: 0,
+                  totalRecharged: 0,
+                  totalUsed: 0,
+                },
+              },
+              cart: {
+                create: {},
+              },
+            },
+          },
+        },
+        include: {
+          customerInfo: { include: { wallet: true, cart: true } },
+          staffInfo: { include: { permissions: true } },
+          outlet: true,
+        },
+      });
+    } else if (!user.googleId) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { googleId },
+        include: {
+          customerInfo: { include: { wallet: true, cart: true } },
+          staffInfo: { include: { permissions: true } },
+          outlet: true,
+        },
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, outletId: user.outletId },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    });
+
+    const response = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      outletId: user.outletId,
+      outlet: user.outlet,
+      customerDetails: user.customerInfo ? {
+        id: user.customerInfo.id,
+        yearOfStudy: user.customerInfo.yearOfStudy,
+        wallet: user.customerInfo.wallet,
+        cart: user.customerInfo.cart,
+      } : undefined,
+      staffDetails: user.staffInfo ? {
+        id: user.staffInfo.id,
+        staffRole: user.staffInfo.staffRole,
+        permissions: user.staffInfo.permissions,
+      } : undefined,
+    };
+
+    const redirectUrl = `http://localhost:5173?token=${token}`;
+    console.log('Redirecting to:', redirectUrl);
+    res.redirect(redirectUrl);
   } catch (error) {
-    console.error("Staff login error:", error);
-    next(error);
+    console.error('Google OAuth error:', error);
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 };
 
@@ -239,92 +374,72 @@ export const signOut = async (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
+      maxAge: 0,
     });
-
     res.status(200).json({ message: 'Signed out successfully' });
   } catch (error) {
+    console.error('Sign out error:', error);
     next(error);
   }
 };
 
 export const checkAuth = async (req, res) => {
   try {
-    const token = req.cookies.token;
+    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
     if (!token) {
-      console.log('No token found in cookies');
       return res.status(401).json({ message: 'Not authenticated' });
     }
 
     let decoded;
     try {
       decoded = jwt.verify(token, JWT_SECRET);
-      console.log('Decoded JWT:', decoded);
     } catch (err) {
       console.error('JWT verification failed:', err);
-      return res.status(401).json({ message: 'Invalid token' });
+      return res.status(401).json({ message: 'Invalid or expired token' });
     }
 
     const userId = Number(decoded.id);
     if (isNaN(userId)) {
-      console.error('Invalid user ID in token:', decoded.id);
       return res.status(400).json({ message: 'Invalid token payload' });
     }
 
-   
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        staffInfo: {
-          include: {
-            permissions: true
-          }
-        },
-        outlet: {
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            phone: true,
-            email: true
-          }
-        }
-      }
+        customerInfo: { include: { wallet: true, cart: true } },
+        staffInfo: { include: { permissions: true } },
+        outlet: true,
+      },
     });
 
     if (!user) {
-      console.log('No user found with ID:', userId);
       return res.status(404).json({ message: 'User not found' });
     }
 
-    console.log('User found:', user);
-
-   
-    let userResponse = {
+    const response = {
       id: user.id,
       name: user.name,
       email: user.email,
       phone: user.phone,
       role: user.role,
       outletId: user.outletId,
-      outlet: user.outlet
-    };
-
-    if (user.role === 'STAFF' && user.staffInfo) {
-      const permissions = user.staffInfo.permissions?.map(perm => ({
-        type: perm.type,
-        isGranted: perm.isGranted
-      })) || [];
-
-      userResponse.staffDetails = {
+      outlet: user.outlet,
+      customerDetails: user.customerInfo ? {
+        id: user.customerInfo.id,
+        yearOfStudy: user.customerInfo.yearOfStudy,
+        wallet: user.customerInfo.wallet,
+        cart: user.customerInfo.cart,
+      } : undefined,
+      staffDetails: user.staffInfo ? {
         id: user.staffInfo.id,
         staffRole: user.staffInfo.staffRole,
-        permissions: permissions
-      };
-    }
+        permissions: user.staffInfo.permissions,
+      } : undefined,
+    };
 
-    return res.status(200).json({ user: userResponse });
+    return res.status(200).json({ user: response });
   } catch (error) {
-    console.error('Unhandled error in checkAuth:', error);
-    return res.status(500).json({ message: 'Server error during authentication.' });
+    console.error('Check auth error:', error);
+    return res.status(500).json({ message: 'Server error during authentication' });
   }
 };

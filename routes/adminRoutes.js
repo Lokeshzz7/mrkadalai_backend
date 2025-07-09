@@ -9,6 +9,7 @@ import { getCustomersWithWallet,getRechargeHistoryByOutlet,getOrdersPaidViaWalle
 import { getOutletCustomers } from '../controllers/admin/customer.controller.js';
 import { getTickets,ticketClose } from '../controllers/admin/ticket.controller.js';
 import { authenticateToken,authorizeRoles, restrictToAdmin } from '../middlewares/auth.middleware.js';
+import { getOutletSalesReport,getOutletRevenueByItems,getRevenueSplit,getWalletRechargeByDay,getProfitLossTrends,getCustomerOverview,getCustomerPerOrder} from '../controllers/admin/reports.controller.js';
 
 const adminRouter = express.Router();
 
@@ -85,5 +86,13 @@ adminRouter.post('/outlets/ticket-close/',authenticateToken,authorizeRoles('ADMI
 
 //App management
 
+//Reports Management
+adminRouter.post('/outlets/sales-report/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getOutletSalesReport);
+adminRouter.post('/outlets/revenue-report/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getOutletRevenueByItems);
+adminRouter.post('/outlets/revenue-split/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getRevenueSplit);
+adminRouter.post('/outlets/wallet-recharge-by-day/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getWalletRechargeByDay);
+adminRouter.post('/outlets/profit-loss-trends/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getProfitLossTrends);
+adminRouter.post('/outlets/customer-overview/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getCustomerOverview);
+adminRouter.post('/outlets/customer-per-order/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getCustomerPerOrder);
 
 export default adminRouter;

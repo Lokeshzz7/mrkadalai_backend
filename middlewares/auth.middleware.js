@@ -2,7 +2,6 @@ import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/env.js';
 import prisma from '../prisma/client.js';
 
-
 export const authenticateToken = async (req, res, next) => {
   try {
     const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
@@ -19,6 +18,7 @@ export const authenticateToken = async (req, res, next) => {
         outletId: true,
       },
     });
+
     if (!user) {
       return res.status(401).json({ message: 'Invalid token. User not found.' });
     }
@@ -35,24 +35,12 @@ export const authenticateToken = async (req, res, next) => {
   }
 };
 
-// Authorize specific roles
 export const authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ message: 'Authentication required.' });
     }
     if (!roles.includes(req.user.role)) {
-        try {
-      res.clearCookie('token', {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-      });
-
-      res.status(200).json({ message: 'Signed out successfully' });
-    } catch (error) {
-      next(error);
-    }
       return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
     }
     next();
@@ -60,8 +48,8 @@ export const authorizeRoles = (...roles) => {
 };
 
 export const restrictToAdmin = [authenticateToken, authorizeRoles('ADMIN')];
-
 export const restrictToStaff = [authenticateToken, authorizeRoles('STAFF')];
+export const restrictToCustomer = [authenticateToken, authorizeRoles('CUSTOMER')];
 
 export const restrictToStaffWithPermission = (permissionType) => async (req, res, next) => {
   if (!req.user) {

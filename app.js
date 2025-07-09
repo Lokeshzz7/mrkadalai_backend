@@ -11,11 +11,18 @@ import adminRoutes from './routes/adminRoutes.js';
 import errorMiddleware from './middlewares/error.middleware.js';
 import arjectMiddleware from './middlewares/arcjet.middleware.js';
 import cors from 'cors';
+import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import staffRoutes from './routes/staffRoutes.js';
 import customerRouter from './routes/customerRoutes.js';
 
 app.use(cookieParser());
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-session-secret',
+  resave: false,
+  saveUninitialized: false,
+}));
 
 app.use(cors({
   origin: true,
