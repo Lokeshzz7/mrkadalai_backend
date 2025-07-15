@@ -99,6 +99,7 @@ model Product {
   outletId     Int
   category     Category
   inventory    Inventory?
+  minValue     Int?            @default(0)
   orderItems   OrderItem[]     @relation("ProductToOrderItems")
   outlet       Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
   StockHistory StockHistory[]

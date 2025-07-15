@@ -1,7 +1,7 @@
 import express  from'express';
 import { addOutlets,getOutlets,removeOutlets } from '../controllers/admin/outlet.controller.js';
 import { outletAddStaff,getOutletStaff,outletStaffPermission,outletDeleteStaff,outletUpdateStaff,getStaffById } from '../controllers/admin/staff.controller.js';
-import { getProducts,addProduct,deleteProduct } from '../controllers/admin/product.controller.js';
+import { getProducts,addProduct,deleteProduct, updateProduct } from '../controllers/admin/product.controller.js';
 import { outletTotalOrders } from '../controllers/admin/order.controller.js';
 import { getStocks,addStock,deductStock,stockHistory} from '../controllers/admin/inventory.controller.js';
 import { getExpenses,addExpense,getExpenseByDate } from '../controllers/admin/expense.controller.js';
@@ -43,6 +43,8 @@ adminRouter.get('/outlets/get-products/:outletId',authenticateToken,authorizeRol
 adminRouter.post('/outlets/add-product/',authenticateToken,authorizeRoles('ADMIN'),addProduct);
 
 adminRouter.delete('/outlets/delete-product/:id',authenticateToken,authorizeRoles('ADMIN'),deleteProduct);
+
+adminRouter.put('/outlets/update-product/:id',authenticateToken,authorizeRoles('ADMIN'),updateProduct)
 
 //Order management
 adminRouter.get('/outlets/:outletId/orders/', authenticateToken, authorizeRoles('ADMIN'),outletTotalOrders);
