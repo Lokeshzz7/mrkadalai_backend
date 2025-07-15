@@ -10,6 +10,7 @@ import { getOutletCustomers } from '../controllers/admin/customer.controller.js'
 import { getTickets,ticketClose } from '../controllers/admin/ticket.controller.js';
 import { authenticateToken,authorizeRoles, restrictToAdmin } from '../middlewares/auth.middleware.js';
 import { getOutletSalesReport,getOutletRevenueByItems,getRevenueSplit,getWalletRechargeByDay,getProfitLossTrends,getCustomerOverview,getCustomerPerOrder} from '../controllers/admin/reports.controller.js';
+import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems } from '../controllers/admin/dashboard.controller.js'
 
 const adminRouter = express.Router();
 
@@ -96,5 +97,13 @@ adminRouter.post('/outlets/wallet-recharge-by-day/:outletId/',authenticateToken,
 adminRouter.post('/outlets/profit-loss-trends/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getProfitLossTrends);
 adminRouter.post('/outlets/customer-overview/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getCustomerOverview);
 adminRouter.post('/outlets/customer-per-order/:outletId/',authenticateToken,authorizeRoles('ADMIN'),getCustomerPerOrder);
+
+// Dashboard Management
+adminRouter.get('/dashboard/overview', authenticateToken, authorizeRoles('ADMIN'), getDashboardOverview);
+adminRouter.post('/dashboard/revenue-trend', authenticateToken, authorizeRoles('ADMIN'), getRevenueTrend);
+adminRouter.post('/dashboard/order-status-distribution', authenticateToken, authorizeRoles('ADMIN'), getOrderStatusDistribution);
+adminRouter.post('/dashboard/order-source-distribution', authenticateToken, authorizeRoles('ADMIN'), getOrderSourceDistribution);
+adminRouter.post('/dashboard/top-selling-items', authenticateToken, authorizeRoles('ADMIN'), getTopSellingItems);
+adminRouter.post('/dashboard/peak-time-slots', authenticateToken, authorizeRoles('ADMIN'), getPeakTimeSlots);
 
 export default adminRouter;
