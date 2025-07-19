@@ -202,7 +202,7 @@ import prisma from "../../prisma/client.js";
 
 //   } catch (error) {
 //     console.error("Error creating order:", error);
-    
+
 //     if (error.code && paymentMethod === 'WALLET') {
 //       try {
 //         const customer = await prisma.customerDetails.findUnique({
@@ -247,249 +247,13 @@ import prisma from "../../prisma/client.js";
 //   }
 // };
 
-export const customerAppOrder = async (req, res) => {
-  const { totalAmount, paymentMethod, deliverySlot, items, outletId } = req.body;
-  const userId = req.user.id;
+// export const customerAppOrder = async (req, res) => {
+//   const { totalAmount, paymentMethod, deliverySlot, items, outletId } = req.body;
+//   const userId = req.user.id;
 
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      // Input validation
-      if (!totalAmount || !paymentMethod || !deliverySlot || !items || !Array.isArray(items) || items.length === 0 || !outletId) {
-        throw new Error("Invalid input: totalAmount, paymentMethod, deliverySlot, outletId, and items are required");
-      }
-
-      if (typeof outletId !== 'number' || outletId <= 0) {
-        throw new Error("Invalid outletId: must be a positive number");
-      }
-
-      const validPaymentMethods = ['WALLET', 'UPI', 'CARD'];
-      if (!validPaymentMethods.includes(paymentMethod)) {
-        throw new Error("Invalid payment method");
-      }
-
-      const validDeliverySlots = ['SLOT_11_12', 'SLOT_12_13', 'SLOT_13_14', 'SLOT_14_15', 'SLOT_15_16', 'SLOT_16_17'];
-      if (!validDeliverySlots.includes(deliverySlot)) {
-        throw new Error("Invalid delivery slot");
-      }
-
-      // Validate outlet
-      const outlet = await tx.outlet.findUnique({
-        where: { id: outletId },
-        select: { id: true, isActive: true }
-      });
-
-      if (!outlet) throw new Error("Outlet not found");
-      if (!outlet.isActive) throw new Error("Selected outlet is currently inactive");
-
-      // Validate customer
-      const customer = await tx.customerDetails.findUnique({
-        where: { userId },
-        select: { id: true }
-      });
-      if (!customer) throw new Error("Customer not found");
-
-      const customerId = customer.id;
-
-      // Inventory check
-      const inventoryUpdates = [];
-      const stockValidationErrors = [];
-
-      for (const item of items) {
-        const inventory = await tx.inventory.findUnique({
-          where: { productId: item.productId }
-        });
-
-        if (!inventory) {
-          stockValidationErrors.push(`Product ${item.productId} not found`);
-        } else if (inventory.quantity < item.quantity) {
-          stockValidationErrors.push(`Insufficient stock for product ${item.productId}`);
-        } else {
-          inventoryUpdates.push({
-            productId: item.productId,
-            outletId,
-            currentStock: inventory.quantity,
-            requestedQuantity: item.quantity,
-            newStock: inventory.quantity - item.quantity
-          });
-        }
-      }
-
-      if (stockValidationErrors.length > 0) {
-        throw new Error(`Stock validation failed: ${stockValidationErrors.join(', ')}`);
-      }
-
-      // Wallet payment
-      let walletTransaction = null;
-
-      if (paymentMethod === 'WALLET') {
-        const wallet = await tx.wallet.findUnique({
-          where: { customerId }
-        });
-
-        if (!wallet) throw new Error("Wallet not found");
-
-        if (wallet.balance < totalAmount) {
-          throw new Error(`Insufficient wallet balance. Available: ${wallet.balance}, Required: ${totalAmount}`);
-        }
-
-        await tx.wallet.update({
-          where: { customerId },
-          data: {
-            balance: wallet.balance - totalAmount,
-            totalUsed: wallet.totalUsed + totalAmount,
-            lastOrder: new Date()
-          }
-        });
-
-        walletTransaction = await tx.walletTransaction.create({
-          data: {
-            walletId: wallet.id,
-            amount: -totalAmount,
-            method: 'WALLET',
-            status: 'DEDUCT'
-          }
-        });
-      }
-
-      // Inventory deduction
-      for (const update of inventoryUpdates) {
-        await tx.inventory.update({
-          where: { productId: update.productId },
-          data: { quantity: update.newStock }
-        });
-
-        await tx.stockHistory.create({
-          data: {
-            productId: update.productId,
-            outletId: update.outletId,
-            quantity: update.requestedQuantity,
-            action: 'REMOVE'
-          }
-        });
-      }
-
-      // Create order
-      const deliveryDate = new Date();
-      deliveryDate.setHours(0, 0, 0, 0);
-
-      const order = await tx.order.create({
-        data: {
-          customerId,
-          outletId,
-          totalAmount,
-          paymentMethod,
-          status: 'PENDING',
-          type: 'APP',
-          deliveryDate,
-          deliverySlot,
-          isPreOrder: false,
-          items: {
-            create: items.map(item => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              status: 'NOT_DELIVERED'
-            }))
-          }
-        },
-        include: {
-          items: { include: { product: true } },
-          customer: {
-            include: {
-              user: {
-                select: {
-                  name: true,
-                  email: true,
-                  phone: true
-                }
-              }
-            }
-          },
-          outlet: {
-            select: {
-              id: true,
-              name: true,
-              address: true
-            }
-          }
-        }
-      });
-
-      // Clear cart
-      const cart = await tx.cart.findUnique({
-        where: { customerId }
-      });
-
-      if (cart) {
-        await tx.cartItem.deleteMany({
-          where: { cartId: cart.id }
-        });
-      }
-
-      return { order, walletTransaction, stockUpdates: inventoryUpdates };
-    });
-
-    // Success response
-    res.status(201).json({
-      message: 'Order placed successfully',
-      order: {
-        id: result.order.id,
-        orderNumber: `#ORD-${result.order.id.toString().padStart(6, '0')}`,
-        totalAmount: result.order.totalAmount,
-        paymentMethod: result.order.paymentMethod,
-        status: result.order.status,
-        deliverySlot: result.order.deliverySlot,
-        deliveryDate: result.order.deliveryDate,
-        createdAt: result.order.createdAt,
-        items: result.order.items,
-        customer: result.order.customer,
-        outlet: result.order.outlet
-      },
-      walletTransaction: result.walletTransaction ? {
-        id: result.walletTransaction.id,
-        amount: result.walletTransaction.amount,
-        method: result.walletTransaction.method,
-        status: result.walletTransaction.status,
-        createdAt: result.walletTransaction.createdAt
-      } : null,
-      stockUpdates: result.stockUpdates
-    });
-
-  } catch (error) {
-    console.error("Error placing order:", error.message);
-
-    if (error.message.includes('wallet balance')) {
-      return res.status(400).json({
-        message: 'Insufficient wallet balance',
-        error: error.message,
-        type: 'WALLET_ERROR'
-      });
-    }
-
-    if (error.message.includes('Stock validation failed')) {
-      return res.status(400).json({
-        message: 'Some items are out of stock',
-        error: error.message,
-        type: 'STOCK_ERROR'
-      });
-    }
-
-    res.status(500).json({
-      message: 'Failed to place order',
-      error: error.message,
-      type: 'SERVER_ERROR'
-    });
-  }
-};
-
-// export const customerAppOrder2 = async (req, res) => {
-//   // Use database transaction for atomicity
-//   const transaction = await prisma.$transaction(async (tx) => {
-//     try {
-//       const { totalAmount, paymentMethod, deliverySlot, items, outletId } = req.body;
-//       const userId = req.user.id;
-
-//       // Validation (same as before)
+//   try {
+//     const result = await prisma.$transaction(async (tx) => {
+//       // Input validation
 //       if (!totalAmount || !paymentMethod || !deliverySlot || !items || !Array.isArray(items) || items.length === 0 || !outletId) {
 //         throw new Error("Invalid input: totalAmount, paymentMethod, deliverySlot, outletId, and items are required");
 //       }
@@ -508,85 +272,66 @@ export const customerAppOrder = async (req, res) => {
 //         throw new Error("Invalid delivery slot");
 //       }
 
-//       // Check outlet
+//       // Validate outlet
 //       const outlet = await tx.outlet.findUnique({
 //         where: { id: outletId },
-//         select: { id: true, isActive: true, name: true }
+//         select: { id: true, isActive: true }
 //       });
 
-//       if (!outlet) {
-//         throw new Error("Outlet not found");
-//       }
+//       if (!outlet) throw new Error("Outlet not found");
+//       if (!outlet.isActive) throw new Error("Selected outlet is currently inactive");
 
-//       if (!outlet.isActive) {
-//         throw new Error("Selected outlet is currently inactive");
-//       }
-
-//       // Get customer
+//       // Validate customer
 //       const customer = await tx.customerDetails.findUnique({
 //         where: { userId },
-//         select: { id: true },
+//         select: { id: true }
 //       });
-
-//       if (!customer) {
-//         throw new Error("Customer not found");
-//       }
+//       if (!customer) throw new Error("Customer not found");
 
 //       const customerId = customer.id;
 
-//       // 🚨 CRITICAL: Validate stock availability for ALL items ATOMICALLY
-//       const stockValidationErrors = [];
+//       // Inventory check
 //       const inventoryUpdates = [];
+//       const stockValidationErrors = [];
 
 //       for (const item of items) {
-//         // Get current inventory with SELECT FOR UPDATE to prevent race conditions
 //         const inventory = await tx.inventory.findUnique({
 //           where: { productId: item.productId }
 //         });
 
 //         if (!inventory) {
-//           stockValidationErrors.push(`Product ${item.productId} not found in inventory`);
-//           continue;
+//           stockValidationErrors.push(`Product ${item.productId} not found`);
+//         } else if (inventory.quantity < item.quantity) {
+//           stockValidationErrors.push(`Insufficient stock for product ${item.productId}`);
+//         } else {
+//           inventoryUpdates.push({
+//             productId: item.productId,
+//             outletId,
+//             currentStock: inventory.quantity,
+//             requestedQuantity: item.quantity,
+//             newStock: inventory.quantity - item.quantity
+//           });
 //         }
-
-//         // Check if we have enough stock
-//         if (inventory.quantity < item.quantity) {
-//           stockValidationErrors.push(
-//             `Insufficient stock for product ${item.productId}. Available: ${inventory.quantity}, Requested: ${item.quantity}`
-//           );
-//           continue;
-//         }
-
-//         // Prepare inventory update
-//         inventoryUpdates.push({
-//           productId: item.productId,
-//           currentStock: inventory.quantity,
-//           requestedQuantity: item.quantity,
-//           newStock: inventory.quantity - item.quantity
-//         });
 //       }
 
-//       // If any stock validation errors, reject the entire order
 //       if (stockValidationErrors.length > 0) {
 //         throw new Error(`Stock validation failed: ${stockValidationErrors.join(', ')}`);
 //       }
 
-//       // Handle wallet payment
+//       // Wallet payment
 //       let walletTransaction = null;
+
 //       if (paymentMethod === 'WALLET') {
 //         const wallet = await tx.wallet.findUnique({
 //           where: { customerId }
 //         });
 
-//         if (!wallet) {
-//           throw new Error("Wallet not found");
-//         }
+//         if (!wallet) throw new Error("Wallet not found");
 
 //         if (wallet.balance < totalAmount) {
 //           throw new Error(`Insufficient wallet balance. Available: ${wallet.balance}, Required: ${totalAmount}`);
 //         }
 
-//         // Update wallet
 //         await tx.wallet.update({
 //           where: { customerId },
 //           data: {
@@ -596,7 +341,6 @@ export const customerAppOrder = async (req, res) => {
 //           }
 //         });
 
-//         // Create wallet transaction
 //         walletTransaction = await tx.walletTransaction.create({
 //           data: {
 //             walletId: wallet.id,
@@ -607,20 +351,17 @@ export const customerAppOrder = async (req, res) => {
 //         });
 //       }
 
-//       // 🚨 CRITICAL: Update inventory ATOMICALLY
+//       // Inventory deduction
 //       for (const update of inventoryUpdates) {
 //         await tx.inventory.update({
 //           where: { productId: update.productId },
-//           data: {
-//             quantity: update.newStock
-//           }
+//           data: { quantity: update.newStock }
 //         });
 
-//         // Create stock history
 //         await tx.stockHistory.create({
 //           data: {
 //             productId: update.productId,
-//             outletId,
+//             outletId: update.outletId,
 //             quantity: update.requestedQuantity,
 //             action: 'REMOVE'
 //           }
@@ -652,11 +393,7 @@ export const customerAppOrder = async (req, res) => {
 //           }
 //         },
 //         include: {
-//           items: {
-//             include: {
-//               product: true
-//             }
-//           },
+//           items: { include: { product: true } },
 //           customer: {
 //             include: {
 //               user: {
@@ -678,7 +415,7 @@ export const customerAppOrder = async (req, res) => {
 //         }
 //       });
 
-//       // Clear cart after successful order
+//       // Clear cart
 //       const cart = await tx.cart.findUnique({
 //         where: { customerId }
 //       });
@@ -689,20 +426,10 @@ export const customerAppOrder = async (req, res) => {
 //         });
 //       }
 
-//       return {
-//         order,
-//         walletTransaction,
-//         stockUpdates: inventoryUpdates
-//       };
+//       return { order, walletTransaction, stockUpdates: inventoryUpdates };
+//     });
 
-//     } catch (error) {
-//       throw error; // This will trigger transaction rollback
-//     }
-//   });
-
-//   try {
-//     const result = await transaction;
-    
+//     // Success response
 //     res.status(201).json({
 //       message: 'Order placed successfully',
 //       order: {
@@ -729,32 +456,307 @@ export const customerAppOrder = async (req, res) => {
 //     });
 
 //   } catch (error) {
-//     console.error("Error creating order:", error);
-    
-//     // Return specific error messages
-//     if (error.message.includes('Stock validation failed')) {
+//     console.error("Error placing order:", error.message);
+
+//     if (error.message.includes('wallet balance')) {
 //       return res.status(400).json({
-//         message: "Some items are out of stock",
-//         error: error.message,
-//         type: 'STOCK_ERROR'
-//       });
-//     }
-    
-//     if (error.message.includes('Insufficient wallet balance')) {
-//       return res.status(400).json({
-//         message: "Insufficient wallet balance",
+//         message: 'Insufficient wallet balance',
 //         error: error.message,
 //         type: 'WALLET_ERROR'
 //       });
 //     }
 
-//     return res.status(500).json({
-//       message: "Failed to place order",
+//     if (error.message.includes('Stock validation failed')) {
+//       return res.status(400).json({
+//         message: 'Some items are out of stock',
+//         error: error.message,
+//         type: 'STOCK_ERROR'
+//       });
+//     }
+
+//     res.status(500).json({
+//       message: 'Failed to place order',
 //       error: error.message,
 //       type: 'SERVER_ERROR'
 //     });
 //   }
 // };
+
+export const customerAppOrder = async (req, res) => {
+  // Use database transaction for atomicity
+  const transaction = await prisma.$transaction(async (tx) => {
+    try {
+      const { totalAmount, paymentMethod, deliverySlot, items, outletId } = req.body;
+      const userId = req.user.id;
+
+      // Validation (same as before)
+      if (!totalAmount || !paymentMethod || !deliverySlot || !items || !Array.isArray(items) || items.length === 0 || !outletId) {
+        throw new Error("Invalid input: totalAmount, paymentMethod, deliverySlot, outletId, and items are required");
+      }
+
+      if (typeof outletId !== 'number' || outletId <= 0) {
+        throw new Error("Invalid outletId: must be a positive number");
+      }
+
+      const validPaymentMethods = ['WALLET', 'UPI', 'CARD'];
+      if (!validPaymentMethods.includes(paymentMethod)) {
+        throw new Error("Invalid payment method");
+      }
+
+      const validDeliverySlots = ['SLOT_11_12', 'SLOT_12_13', 'SLOT_13_14', 'SLOT_14_15', 'SLOT_15_16', 'SLOT_16_17'];
+      if (!validDeliverySlots.includes(deliverySlot)) {
+        throw new Error("Invalid delivery slot");
+      }
+
+      // Check outlet
+      const outlet = await tx.outlet.findUnique({
+        where: { id: outletId },
+        select: { id: true, isActive: true, name: true }
+      });
+
+      if (!outlet) {
+        throw new Error("Outlet not found");
+      }
+
+      if (!outlet.isActive) {
+        throw new Error("Selected outlet is currently inactive");
+      }
+
+      // Get customer
+      const customer = await tx.customerDetails.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+
+      if (!customer) {
+        throw new Error("Customer not found");
+      }
+
+      const customerId = customer.id;
+
+      // 🚨 CRITICAL: Validate stock availability for ALL items ATOMICALLY
+      const stockValidationErrors = [];
+      const inventoryUpdates = [];
+
+      for (const item of items) {
+        // Get current inventory with SELECT FOR UPDATE to prevent race conditions
+        const inventory = await tx.inventory.findUnique({
+          where: { productId: item.productId }
+        });
+
+        if (!inventory) {
+          stockValidationErrors.push(`Product ${item.productId} not found in inventory`);
+          continue;
+        }
+
+        // Check if we have enough stock
+        if (inventory.quantity < item.quantity) {
+          stockValidationErrors.push(
+            `Insufficient stock for product ${item.productId}. Available: ${inventory.quantity}, Requested: ${item.quantity}`
+          );
+          continue;
+        }
+
+        // Prepare inventory update
+        inventoryUpdates.push({
+          productId: item.productId,
+          currentStock: inventory.quantity,
+          requestedQuantity: item.quantity,
+          newStock: inventory.quantity - item.quantity
+        });
+      }
+
+      // If any stock validation errors, reject the entire order
+      if (stockValidationErrors.length > 0) {
+        throw new Error(`Stock validation failed: ${stockValidationErrors.join(', ')}`);
+      }
+
+      // Handle wallet payment
+      let walletTransaction = null;
+      if (paymentMethod === 'WALLET') {
+        const wallet = await tx.wallet.findUnique({
+          where: { customerId }
+        });
+
+        if (!wallet) {
+          throw new Error("Wallet not found");
+        }
+
+        if (wallet.balance < totalAmount) {
+          throw new Error(`Insufficient wallet balance. Available: ${wallet.balance}, Required: ${totalAmount}`);
+        }
+
+        // Update wallet
+        await tx.wallet.update({
+          where: { customerId },
+          data: {
+            balance: wallet.balance - totalAmount,
+            totalUsed: wallet.totalUsed + totalAmount,
+            lastOrder: new Date()
+          }
+        });
+
+        // Create wallet transaction
+        walletTransaction = await tx.walletTransaction.create({
+          data: {
+            walletId: wallet.id,
+            amount: -totalAmount,
+            method: 'WALLET',
+            status: 'DEDUCT'
+          }
+        });
+      }
+
+      // 🚨 CRITICAL: Update inventory ATOMICALLY
+      for (const update of inventoryUpdates) {
+        await tx.inventory.update({
+          where: { productId: update.productId },
+          data: {
+            quantity: update.newStock
+          }
+        });
+
+        // Create stock history
+        await tx.stockHistory.create({
+          data: {
+            productId: update.productId,
+            outletId,
+            quantity: update.requestedQuantity,
+            action: 'REMOVE'
+          }
+        });
+      }
+
+      // Create order
+      const deliveryDate = new Date();
+      deliveryDate.setHours(0, 0, 0, 0);
+
+      const order = await tx.order.create({
+        data: {
+          customerId,
+          outletId,
+          totalAmount,
+          paymentMethod,
+          status: 'PENDING',
+          type: 'APP',
+          deliveryDate,
+          deliverySlot,
+          isPreOrder: false,
+          items: {
+            create: items.map(item => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              status: 'NOT_DELIVERED'
+            }))
+          }
+        },
+        include: {
+          items: {
+            include: {
+              product: true
+            }
+          },
+          customer: {
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                  phone: true
+                }
+              }
+            }
+          },
+          outlet: {
+            select: {
+              id: true,
+              name: true,
+              address: true
+            }
+          }
+        }
+      });
+
+      // Clear cart after successful order
+      const cart = await tx.cart.findUnique({
+        where: { customerId }
+      });
+
+      if (cart) {
+        await tx.cartItem.deleteMany({
+          where: { cartId: cart.id }
+        });
+      }
+
+      return {
+        order,
+        walletTransaction,
+        stockUpdates: inventoryUpdates
+      };
+
+    } catch (error) {
+      throw error; // This will trigger transaction rollback
+    }
+  }, {
+    timeout: 15000
+  });
+
+  try {
+    const result = await transaction;
+
+    res.status(201).json({
+      message: 'Order placed successfully',
+      order: {
+        id: result.order.id,
+        orderNumber: `#ORD-${result.order.id.toString().padStart(6, '0')}`,
+        totalAmount: result.order.totalAmount,
+        paymentMethod: result.order.paymentMethod,
+        status: result.order.status,
+        deliverySlot: result.order.deliverySlot,
+        deliveryDate: result.order.deliveryDate,
+        createdAt: result.order.createdAt,
+        items: result.order.items,
+        customer: result.order.customer,
+        outlet: result.order.outlet
+      },
+      walletTransaction: result.walletTransaction ? {
+        id: result.walletTransaction.id,
+        amount: result.walletTransaction.amount,
+        method: result.walletTransaction.method,
+        status: result.walletTransaction.status,
+        createdAt: result.walletTransaction.createdAt
+      } : null,
+      stockUpdates: result.stockUpdates
+    });
+
+  } catch (error) {
+    console.error("Error creating order:", error);
+
+    // Return specific error messages
+    if (error.message.includes('Stock validation failed')) {
+      return res.status(400).json({
+        message: "Some items are out of stock",
+        error: error.message,
+        type: 'STOCK_ERROR'
+      });
+    }
+
+    if (error.message.includes('Insufficient wallet balance')) {
+      return res.status(400).json({
+        message: "Insufficient wallet balance",
+        error: error.message,
+        type: 'WALLET_ERROR'
+      });
+    }
+
+    return res.status(500).json({
+      message: "Failed to place order",
+      error: error.message,
+      type: 'SERVER_ERROR'
+    });
+  }
+};
 
 
 
@@ -919,15 +921,15 @@ export const customerAppCancelOrder = async (req, res) => {
     }
 
     if (order.status !== 'PENDING') {
-      return res.status(400).json({ 
-        message: `Cannot cancel order. Order status is ${order.status}` 
+      return res.status(400).json({
+        message: `Cannot cancel order. Order status is ${order.status}`
       });
     }
 
     const result = await prisma.$transaction(async (tx) => {
       const cancelledOrder = await tx.order.update({
         where: { id: parseInt(orderId) },
-        data: { 
+        data: {
           status: 'CANCELLED',
         },
         include: {
@@ -1015,8 +1017,8 @@ export const customerAppCancelOrder = async (req, res) => {
       return cancelledOrder;
     });
 
-    res.status(200).json({ 
-      message: "Order cancelled successfully", 
+    res.status(200).json({
+      message: "Order cancelled successfully",
       order: result,
       refundAmount: order.totalAmount,
       refundMethod: order.paymentMethod === 'CASH' ? 'CASH' : 'WALLET'
