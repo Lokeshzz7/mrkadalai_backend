@@ -1,6 +1,15 @@
 import express from 'express';
 import { OAuth2Client } from 'google-auth-library';
-import { signUp, signIn, signOut, checkAuth, staffSignIn, googleSignIn} from '../controllers/auth/auth.controller.js';
+import {
+  signUp,
+  signIn,
+  signOut,
+  checkAuth,
+  staffSignIn,
+  googleSignIn,
+  superAdminSignIn,
+  adminSignup,
+} from '../controllers/auth/auth.controller.js';
 import { authenticateToken } from '../middlewares/auth.middleware.js';
 
 const authRouter = express.Router();
@@ -11,12 +20,13 @@ const client = new OAuth2Client({
   redirectUri: 'http://localhost:5500/api/auth/google/callback',
 });
 
-
 // Public routes
 authRouter.post('/signup', signUp);
 authRouter.post('/signin', signIn);
+authRouter.post('/admin-signup', adminSignup);
 authRouter.post('/staffsignin', staffSignIn);
 authRouter.post('/signout', signOut);
+authRouter.post('/superadmin-signin', superAdminSignIn);
 authRouter.get('/google', (req, res) => {
   const state = Math.random().toString(36).substring(2);
   req.session = req.session || {};
@@ -53,4 +63,5 @@ authRouter.get('/google/callback', googleSignIn);
 
 // Protected route
 authRouter.get('/me', authenticateToken, checkAuth);
+
 export default authRouter;

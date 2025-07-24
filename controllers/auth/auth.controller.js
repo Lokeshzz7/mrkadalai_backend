@@ -135,6 +135,167 @@ export const adminSignup = async (req, res, next) => {
   }
 };
 
+export const superAdminSignIn = async (req, res, next) => {
+  const { email, password } = req.body;
+
+  try {
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { outlet: true },
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    if (user.role !== 'SUPERADMIN') {
+      return res.status(403).json({ message: 'Access denied. Only SuperAdmin can log in here.' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, outletId: user.outletId },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    });
+
+    const response = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      outletId: user.outletId,
+      outlet: user.outlet,
+    };
+
+    res.status(200).json({ message: 'SuperAdmin login successful', user: response });
+  } catch (error) {
+    console.error('SuperAdmin login error:', error);
+    next(error);
+  }
+};
+
+export const verifyAdmin = async (req, res, next) => {
+  const { adminId, outletIds, permissions } = req.body;
+  const userId = req.user.id;
+
+  try {
+    // Verify the requesting user is SuperAdmin
+    const superAdmin = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { role: true, superAdmin: true },
+    });
+    if (!superAdmin || superAdmin.role !== 'SUPERADMIN' || !superAdmin.superAdmin) {
+      return res.status(403).json({ message: 'Only SuperAdmin can verify admins' });
+    }
+
+    const admin = await prisma.admin.findUnique({ where: { id: adminId } });
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    if (admin.isVerified) {
+      return res.status(400).json({ message: 'Admin is already verified' });
+    }
+
+    // Update admin to verified status and assign outlets and permissions
+    await prisma.admin.update({
+      where: { id: adminId },
+      data: {
+        isVerified: true,
+        outlets: {
+          createMany: {
+            data: outletIds.map(outletId => ({ outletId })),
+          },
+        },
+        permissions: {
+          createMany: {
+            data: permissions.map(p => ({
+              adminOutletId: p.adminOutletId,
+              type: p.type,
+              isGranted: true,
+            })),
+          },
+        },
+      },
+    });
+
+    res.status(200).json({ message: 'Admin verified successfully' });
+  } catch (error) {
+    console.error('Admin verification error:', error);
+    next(error);
+  }
+};
+
+// Add this after signIn or staffSignIn
+export const adminSignIn = async (req, res, next) => {
+  const { email, password } = req.body;
+
+  try {
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
+
+    const admin = await prisma.admin.findUnique({
+      where: { email },
+    });
+
+    if (!admin) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    if (!admin.isVerified) {
+      return res.status(403).json({ message: 'Admin not verified. Contact SuperAdmin.' });
+    }
+
+    const isMatch = await bcrypt.compare(password, admin.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    const token = jwt.sign(
+      { id: admin.id, email: admin.email, role: 'ADMIN' }, // Using 'ADMIN' as a role for token, though it's an Admin model
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+    });
+
+    const response = {
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      isVerified: admin.isVerified,
+    };
+
+    res.status(200).json({ message: 'Admin login successful', admin: response });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    next(error);
+  }
+};
+
 export const signIn = async (req, res, next) => {
   const { email, password } = req.body;
 

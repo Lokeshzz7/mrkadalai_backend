@@ -15,7 +15,7 @@ export const authenticateToken = async (req, res, next) => {
         id: true,
         email: true,
         role: true,
-        outletId: true,
+        outletId: true
       },
     });
 
@@ -35,8 +35,44 @@ export const authenticateToken = async (req, res, next) => {
   }
 };
 
+export const authenticateAdminToken = async (req, res, next) => {
+  try {
+    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ message: 'Access denied. No token provided.' });
+    }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const admin = await prisma.admin.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        email: true,
+        isVerified: true,
+      },
+    });
+
+    if (!admin) {
+      return res.status(401).json({ message: 'Invalid token. Admin not found.' });
+    }
+    if (!admin.isVerified) {
+      return res.status(403).json({ message: 'Admin not verified.' });
+    }
+    req.admin = admin; // Use req.admin instead of req.user for admins
+    next();
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token.' });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired.' });
+    }
+    return res.status(500).json({ message: 'Server error during authentication.' });
+  }
+};
+
 export const authorizeRoles = (...roles) => {
   return (req, res, next) => {
+    console.log(req.user)
     if (!req.user) {
       return res.status(401).json({ message: 'Authentication required.' });
     }
@@ -47,7 +83,14 @@ export const authorizeRoles = (...roles) => {
   };
 };
 
-export const restrictToAdmin = [authenticateToken, authorizeRoles('ADMIN')];
+export const authorizeAdmin = (req, res, next) => {
+  if (!req.admin) {
+    return res.status(401).json({ message: 'Authentication required.' });
+  }
+  next(); // For now, any verified admin is authorized; add more checks if needed
+};
+
+export const restrictToSuperAdmin = [authenticateToken, authorizeRoles('SUPERADMIN')];
 export const restrictToStaff = [authenticateToken, authorizeRoles('STAFF')];
 export const restrictToCustomer = [authenticateToken, authorizeRoles('CUSTOMER')];
 
@@ -82,3 +125,4 @@ export const restrictToStaffWithPermission = (permissionType) => async (req, res
 
 export const authenticate = authenticateToken;
 export const authorize = authorizeRoles;
+export const restrictToAdminRoutes = [authenticateAdminToken, authorizeAdmin]; // For admin-specific routes

@@ -7,7 +7,7 @@ const app = express();
 const PORT = process.env.PORT || 5500;
 
 import authRoutes from './routes/authRoutes.js';
-import adminRoutes from './routes/adminRoutes.js';
+import superAdminRoutes from './routes/superAdminRoutes.js';
 import errorMiddleware from './middlewares/error.middleware.js';
 import arjectMiddleware from './middlewares/arcjet.middleware.js';
 import cors from 'cors';
@@ -32,7 +32,7 @@ app.use(express.json());
 
 // app.use(arjectMiddleware);
 
-app.use('/api/admin', adminRoutes);
+app.use('/api/superadmin', superAdminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/customer',customerRouter);

@@ -292,3 +292,152 @@ export const getPeakTimeSlots = async (req, res, next) => {
     res.status(500).json({ message: "Failed to fetch peak time slots", error: err.message });
   }
 };
+
+// List all admins pending verification
+export const getPendingAdminVerifications = async (req, res, next) => {
+  try {
+    const pendingAdmins = await prisma.admin.findMany({
+      where: { isVerified: false },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        createdAt: true
+      }
+    });
+    res.status(200).json(pendingAdmins);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch pending admin verifications', error: err.message });
+  }
+};
+
+// Superadmin verifies an admin
+export const verifyAdmin = async (req, res, next) => {
+  const { adminId } = req.params;
+  try {
+    const updated = await prisma.admin.update({
+      where: { id: Number(adminId) },
+      data: { isVerified: true }
+    });
+    res.status(200).json({ message: 'Admin verified', admin: { id: updated.id, name: updated.name, email: updated.email } });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to verify admin', error: err.message });
+  }
+};
+
+export const mapOutletsToAdmin = async (req, res, next) => {
+  const { adminId, outletIds } = req.body;
+
+  if (!adminId || !outletIds || !Array.isArray(outletIds) || outletIds.length === 0) {
+    return res.status(400).json({ message: "adminId and a non-empty array of outletIds are required" });
+  }
+
+  try {
+    // Check if admin exists and is verified
+    const admin = await prisma.admin.findUnique({
+      where: { id: Number(adminId) },
+      include: { outlets: true },
+    });
+
+    if (!admin || !admin.isVerified) {
+      return res.status(404).json({ message: "Admin not found or not verified" });
+    }
+
+    // Check if outlets exist and are active
+    const validOutlets = await prisma.outlet.findMany({
+      where: { id: { in: outletIds }, isActive: true },
+    });
+
+    if (validOutlets.length !== outletIds.length) {
+      return res.status(400).json({ message: "One or more outlets are invalid or inactive" });
+    }
+
+    // Create or update AdminOutlet records
+    const existingOutletIds = admin.outlets.map(o => o.outletId);
+    const newOutlets = outletIds.filter(id => !existingOutletIds.includes(id));
+
+    if (newOutlets.length > 0) {
+      await prisma.adminOutlet.createMany({
+        data: newOutlets.map(outletId => ({
+          adminId: Number(adminId),
+          outletId: outletId,
+        })),
+      });
+    }
+
+    const updatedAdmin = await prisma.admin.findUnique({
+      where: { id: Number(adminId) },
+      include: { outlets: { include: { outlet: true } } },
+    });
+
+    res.status(200).json({
+      message: "Outlets mapped to admin successfully",
+      admin: {
+        id: updatedAdmin.id,
+        email: updatedAdmin.email,
+        outlets: updatedAdmin.outlets.map(o => ({
+          outletId: o.outletId,
+          name: o.outlet.name,
+          address: o.outlet.address,
+        })),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to map outlets to admin", error: err.message });
+  }
+};
+
+
+export const assignAdminPermissions = async (req, res, next) => {
+  const { adminId, outletId, permissions } = req.body;
+
+  if (!adminId || !outletId || !permissions || !Array.isArray(permissions) || permissions.length === 0) {
+    return res.status(400).json({ message: "adminId, outletId, and a non-empty array of permissions are required" });
+  }
+
+  try {
+    // Check if admin exists and is verified
+    const admin = await prisma.admin.findUnique({
+      where: { id: Number(adminId) },
+      include: { outlets: true },
+    });
+
+    if (!admin || !admin.isVerified) {
+      return res.status(404).json({ message: "Admin not found or not verified" });
+    }
+
+    // Check if the outlet is associated with the admin
+    const adminOutlet = await prisma.adminOutlet.findUnique({
+      where: { adminId_outletId: { adminId: Number(adminId), outletId: Number(outletId) } },
+    });
+
+    if (!adminOutlet) {
+      return res.status(400).json({ message: "Outlet is not mapped to this admin" });
+    }
+
+    // Validate and create permissions
+    const permissionData = permissions.map(p => ({
+      adminOutletId: adminOutlet.id,
+      type: p.type, // e.g., 'ORDER_MANAGEMENT', 'INVENTORY_MANAGEMENT'
+      isGranted: p.isGranted || true,
+    }));
+
+    await prisma.adminPermission.createMany({
+      data: permissionData,
+      skipDuplicates: true, // Avoid duplicate permissions
+    });
+
+    const updatedPermissions = await prisma.adminPermission.findMany({
+      where: { adminOutletId: adminOutlet.id },
+    });
+
+    res.status(200).json({
+      message: "Permissions assigned successfully",
+      adminId,
+      outletId,
+      permissions: updatedPermissions,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to assign permissions", error: err.message });
+  }
+};
