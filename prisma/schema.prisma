@@ -9,7 +9,7 @@ datasource db {
 
 model Outlet {
   id           Int            @id @default(autoincrement())
-  name         String
+  name         String         @unique
   address      String?
   email        String?        @unique
   isActive     Boolean        @default(true)
@@ -22,24 +22,37 @@ model Outlet {
   orders       Order[]
   products     Product[]
   StockHistory StockHistory[]
-  users        User[]
+  users        User[]         @relation("OutletUsers")
+  admins       AdminOutlet[]  @relation("OutletAdmins")
 }
 
+model User {
+  id           Int              @id @default(autoincrement())
+  email        String           @unique
+  name         String
+  password     String?
+  role         Role             @default(CUSTOMER)
+  googleId     String?          @unique
+  outletId     Int?
+  createdAt    DateTime         @default(now())
+  phone        String?
+  customerInfo CustomerDetails?
+  staffInfo    StaffDetails?
+  outlet       Outlet?          @relation("OutletUsers", fields: [outletId], references: [id], onDelete: Cascade)
+}
 
-  model User {
-    id           Int              @id @default(autoincrement())
-    email        String           @unique
-    name         String
-    password     String?
-    role         Role             @default(CUSTOMER)
-    googleId     String? @unique
-    outletId     Int?
-    createdAt    DateTime         @default(now())
-    phone        String?
-    customerInfo CustomerDetails?
-    staffInfo    StaffDetails?
-    outlet       Outlet?          @relation(fields: [outletId], references: [id], onDelete: Cascade)
-  }
+model CustomerDetails {
+  id          Int           @id @default(autoincrement())
+  userId      Int           @unique
+  yearOfStudy Int?
+  degree      typeOfDegree?
+  bio         String?
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders      Order[]       @relation("CustomerOrders")
+  tickets     Ticket[]      @relation("CustomerTickets")
+  wallet      Wallet?
+  cart        Cart?
+}
 
 model StaffDetails {
   id          Int               @id @default(autoincrement())
@@ -57,56 +70,41 @@ model StaffPermission {
   staff     StaffDetails   @relation(fields: [staffId], references: [id], onDelete: Cascade)
 }
 
-model CustomerDetails {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @unique
-  yearOfStudy Int?
-  user        User     @relation(fields: [userId], references: [id], onDelete:  Cascade)
-  degree     typeOfDegree?
-  bio         String?
-  orders      Order[]
-  tickets     Ticket[]
-  wallet      Wallet?
-  cart        Cart?
-}
-
 model Cart {
-  id          Int         @id @default(autoincrement())
-  customerId  Int         @unique
-  customer    CustomerDetails @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  items       CartItem[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id         Int             @id @default(autoincrement())
+  customerId Int             @unique
+  customer   CustomerDetails @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items      CartItem[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
 }
 
 model CartItem {
-  id        Int      @id @default(autoincrement())
+  id        Int     @id @default(autoincrement())
   cartId    Int
   productId Int
   quantity  Int
-  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product   Product  @relation(name: "ProductCartItems", fields: [productId], references: [id], onDelete: Cascade)
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product @relation("ProductCartItems", fields: [productId], references: [id], onDelete: Cascade)
+
   @@unique([cartId, productId])
 }
 
-
 model Product {
-  id           Int             @id @default(autoincrement())
-  name         String          @unique
+  id           Int            @id @default(autoincrement())
+  name         String         @unique
   description  String?
   price        Float
   imageUrl     String?
   outletId     Int
   category     Category
+  minValue     Int?           @default(0)
   inventory    Inventory?
-  minValue     Int?            @default(0)
-  orderItems   OrderItem[]     @relation("ProductToOrderItems")
-  outlet       Outlet          @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]    @relation("ProductToOrderItems")
+  outlet       Outlet         @relation(fields: [outletId], references: [id], onDelete: Cascade)
   StockHistory StockHistory[]
-  cartItems    CartItem[]      @relation(name: "ProductCartItems")
-
+  cartItems    CartItem[]     @relation("ProductCartItems")
 }
-
 
 model Inventory {
   id        Int     @id @default(autoincrement())
@@ -142,9 +140,10 @@ model Order {
   deliverySlot      DeliverySlot?
   isPreOrder        Boolean          @default(false)
   razorpayPaymentId String?
-  customer          CustomerDetails? @relation(fields: [customerId], references: [id])
+  customer          CustomerDetails? @relation("CustomerOrders", fields: [customerId], references: [id])
   outlet            Outlet           @relation(fields: [outletId], references: [id], onDelete: Cascade)
   items             OrderItem[]
+  // Removed User relation; replaced with customer relation to CustomerDetails
 }
 
 model OrderItem {
@@ -203,8 +202,8 @@ model Ticket {
   createdAt      DateTime        @default(now())
   resolvedAt     DateTime?
   resolutionNote String?
-  customer       CustomerDetails @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  imageUrl       String?         // For storing image URL
+  customer       CustomerDetails @relation("CustomerTickets", fields: [customerId], references: [id], onDelete: Cascade)
+  imageUrl       String? // For storing image URL
 }
 
 model Coupon {
@@ -232,10 +231,44 @@ model CouponUsage {
   coupon   Coupon   @relation(fields: [couponId], references: [id])
 }
 
-enum typeOfDegree{
-  UG 
+model Admin {
+  id          Int               @id @default(autoincrement())
+  email       String            @unique
+  name        String
+  password    String
+  isVerified  Boolean           @default(false)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  outlets     AdminOutlet[]
+  permissions AdminPermission[] @relation("AdminPermissions")
+}
+
+model AdminOutlet {
+  id          Int               @id @default(autoincrement())
+  adminId     Int
+  outletId    Int
+  admin       Admin             @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  outlet      Outlet            @relation("OutletAdmins", fields: [outletId], references: [id], onDelete: Cascade)
+  permissions AdminPermission[] @relation("AdminOutletPermissions")
+
+  @@unique([adminId, outletId])
+}
+
+model AdminPermission {
+  id            Int                 @id @default(autoincrement())
+  adminOutletId Int
+  adminId       Int?
+  type          AdminPermissionType
+  isGranted     Boolean             @default(false)
+  admin         Admin?              @relation("AdminPermissions", fields: [adminId], references: [id])
+  AdminOutlet   AdminOutlet         @relation("AdminOutletPermissions", fields: [adminOutletId], references: [id])
+}
+
+enum typeOfDegree {
+  UG
   PG
 }
+
 enum OrderType {
   MANUAL
   APP
@@ -249,7 +282,24 @@ enum OrderItemStatus {
 enum Role {
   CUSTOMER
   STAFF
-  ADMIN
+  SUPERADMIN
+}
+
+enum AdminPermissionType {
+  ORDER_MANAGEMENT
+  STAFF_MANAGEMENT
+  INVENTORY_MANAGEMENT
+  EXPENDITURE_MANAGEMENT
+  WALLET_MANAGEMENT
+  CUSTOMER_MANAGEMENT
+  TICKET_MANAGEMENT
+  NOTIFICATIONS_MANAGEMENT
+  PRODUCT_MANAGEMENT
+  APP_MANAGEMENT
+  REPORTS_ANALYTICS
+  SETTINGS
+  ONBOARDING
+  ADMIN_MANAGEMENT
 }
 
 enum PermissionType {

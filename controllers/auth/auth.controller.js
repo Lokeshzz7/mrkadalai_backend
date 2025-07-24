@@ -96,6 +96,45 @@ export const signUp = async (req, res, next) => {
   }
 };
 
+export const adminSignup = async (req, res, next) => {
+  const { name, email, password, retypePassword } = req.body;
+
+  try {
+    if (!name || !email || !password || !retypePassword) {
+      return res.status(400).json({ message: 'Name, email, password, and retype password are required' });
+    }
+
+    if (password !== retypePassword) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    const existingAdmin = await prisma.admin.findUnique({ where: { email } });
+    if (existingAdmin) {
+      return res.status(400).json({ message: 'Admin already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const admin = await prisma.admin.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        isVerified: false,
+      },
+    });
+
+    // Notify SuperAdmin (e.g., via dashboard or email - implement separately)
+    // For now, log a message to indicate a notification should be sent
+    console.log(`Admin signup request for ${email}. Awaiting SuperAdmin verification.`);
+
+    res.status(201).json({ message: 'Admin signup successful. Awaiting SuperAdmin verification.', adminId: admin.id });
+  } catch (error) {
+    console.error('Admin signup error:', error);
+    next(error);
+  }
+};
+
 export const signIn = async (req, res, next) => {
   const { email, password } = req.body;
 
