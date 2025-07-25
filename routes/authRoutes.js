@@ -1,8 +1,7 @@
 import express from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import {
-  signUp,
-  signIn,
+  customerSignIn,
   signOut,
   checkAuth,
   staffSignIn,
@@ -10,6 +9,7 @@ import {
   superAdminSignIn,
   adminSignup,
   staffSignup,
+  customerSignup,
 } from '../controllers/auth/auth.controller.js';
 import { authenticateToken } from '../middlewares/auth.middleware.js';
 
@@ -22,13 +22,22 @@ const client = new OAuth2Client({
 });
 
 // Public routes
-authRouter.post('/signup', signUp);
-authRouter.post('/signin', signIn);
+
+//Customer auth
+authRouter.post('/signup', customerSignup);
+authRouter.post('/signin', customerSignIn);
+
+//staff auth
 authRouter.post('/staff-signup',staffSignup)
-authRouter.post('/admin-signup', adminSignup);
 authRouter.post('/staffsignin', staffSignIn);
-authRouter.post('/signout', signOut);
+
+//admin auth
+authRouter.post('/admin-signup', adminSignup);
+
+//super-admin auth
 authRouter.post('/superadmin-signin', superAdminSignIn);
+
+//google auth
 authRouter.get('/google', (req, res) => {
   const state = Math.random().toString(36).substring(2);
   req.session = req.session || {};
@@ -65,5 +74,8 @@ authRouter.get('/google/callback', googleSignIn);
 
 // Protected route
 authRouter.get('/me', authenticateToken, checkAuth);
+
+//sign out
+authRouter.post('/signout', signOut);
 
 export default authRouter;

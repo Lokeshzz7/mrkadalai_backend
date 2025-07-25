@@ -11,7 +11,7 @@ const client = new OAuth2Client({
 });
 
 
-export const signUp = async (req, res, next) => {
+export const customerSignup = async (req, res, next) => {
   const { name, email, password, retypePassword, outletId, phone, yearOfStudy } = req.body;
 
   try {
@@ -89,9 +89,9 @@ export const signUp = async (req, res, next) => {
       } : undefined,
     };
 
-    res.status(201).json({ message: 'User created successfully', user: response });
+    res.status(201).json({ message: 'Customer created successfully', user: response });
   } catch (error) {
-    console.error('Signup error:', error);
+    console.error('Customer signup error:', error);
     next(error);
   }
 };
@@ -334,7 +334,7 @@ export const adminSignIn = async (req, res, next) => {
   }
 };
 
-export const signIn = async (req, res, next) => {
+export const customerSignIn = async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
@@ -346,13 +346,12 @@ export const signIn = async (req, res, next) => {
       where: { email },
       include: {
         customerInfo: { include: { wallet: true, cart: true } },
-        staffInfo: { include: { permissions: true } },
         outlet: true,
       },
     });
 
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid email or password' });
+    if (!user || user.role !== 'CUSTOMER') {
+      return res.status(401).json({ message: 'Invalid customer credentials' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -387,16 +386,11 @@ export const signIn = async (req, res, next) => {
         wallet: user.customerInfo.wallet,
         cart: user.customerInfo.cart,
       } : undefined,
-      staffDetails: user.staffInfo ? {
-        id: user.staffInfo.id,
-        staffRole: user.staffInfo.staffRole,
-        permissions: user.staffInfo.permissions,
-      } : undefined,
     };
 
-    res.status(200).json({ message: 'Login successful', user: response });
+    res.status(200).json({ message: 'Customer login successful', user: response });
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Customer login error:', error);
     next(error);
   }
 };
@@ -419,6 +413,10 @@ export const staffSignIn = async (req, res, next) => {
 
     if (!user || user.role !== 'STAFF') {
       return res.status(401).json({ message: 'Invalid staff credentials' });
+    }
+
+    if (!user.isVerified) {
+      return res.status(403).json({ message: 'Staff not verified. Contact SuperAdmin.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);

@@ -302,6 +302,7 @@ export const getPendingAdminVerifications = async (req, res, next) => {
         id: true,
         email: true,
         name: true,
+        phone:true,
         createdAt: true
       }
     });
