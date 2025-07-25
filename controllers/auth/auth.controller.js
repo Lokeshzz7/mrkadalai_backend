@@ -97,7 +97,7 @@ export const signUp = async (req, res, next) => {
 };
 
 export const adminSignup = async (req, res, next) => {
-  const { name, email, password, retypePassword } = req.body;
+  const { name, email, password, retypePassword, phone } = req.body;
 
   try {
     if (!name || !email || !password || !retypePassword) {
@@ -121,16 +121,54 @@ export const adminSignup = async (req, res, next) => {
         email,
         password: hashedPassword,
         isVerified: false,
+        phone
       },
     });
 
-    // Notify SuperAdmin (e.g., via dashboard or email - implement separately)
-    // For now, log a message to indicate a notification should be sent
     console.log(`Admin signup request for ${email}. Awaiting SuperAdmin verification.`);
 
     res.status(201).json({ message: 'Admin signup successful. Awaiting SuperAdmin verification.', adminId: admin.id });
   } catch (error) {
     console.error('Admin signup error:', error);
+    next(error);
+  }
+};
+
+export const staffSignup = async (req, res, next) => {
+  const { name, email, password, retypePassword, phone } = req.body;
+
+  try {
+    if (!name || !email || !password || !retypePassword) {
+      return res.status(400).json({ message: 'Name, email, password, and retype password are required' });
+    }
+
+    if (password !== retypePassword) {
+      return res.status(400).json({ message: 'Passwords do not match' });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User already exists' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        role: 'STAFF',
+        phone: phone || null,
+        isVerified: false,
+      },
+    });
+
+    console.log(`Staff signup request for ${email}. Awaiting SuperAdmin verification.`);
+
+    res.status(201).json({ message: 'Staff signup successful. Awaiting SuperAdmin verification.', userId: user.id });
+  } catch (error) {
+    console.error('Staff signup error:', error);
     next(error);
   }
 };

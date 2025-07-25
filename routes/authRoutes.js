@@ -9,6 +9,7 @@ import {
   googleSignIn,
   superAdminSignIn,
   adminSignup,
+  staffSignup,
 } from '../controllers/auth/auth.controller.js';
 import { authenticateToken } from '../middlewares/auth.middleware.js';
 
@@ -23,6 +24,7 @@ const client = new OAuth2Client({
 // Public routes
 authRouter.post('/signup', signUp);
 authRouter.post('/signin', signIn);
+authRouter.post('/staff-signup',staffSignup)
 authRouter.post('/admin-signup', adminSignup);
 authRouter.post('/staffsignin', staffSignIn);
 authRouter.post('/signout', signOut);
