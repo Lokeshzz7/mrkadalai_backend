@@ -1,6 +1,7 @@
 import express from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import {
+  adminSignIn,
   customerSignIn,
   signOut,
   checkAuth,
@@ -29,10 +30,11 @@ authRouter.post('/signin', customerSignIn);
 
 //staff auth
 authRouter.post('/staff-signup',staffSignup)
-authRouter.post('/staffsignin', staffSignIn);
+authRouter.post('/staff-signin', staffSignIn);
 
 //admin auth
 authRouter.post('/admin-signup', adminSignup);
+authRouter.post('/admin-signin', adminSignIn);
 
 //super-admin auth
 authRouter.post('/superadmin-signin', superAdminSignIn);
