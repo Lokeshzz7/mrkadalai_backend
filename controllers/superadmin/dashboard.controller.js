@@ -326,6 +326,38 @@ export const verifyAdmin = async (req, res, next) => {
   }
 };
 
+export const getVerifiedAdmins = async (req, res, next) => {
+  try {
+    const verifiedAdmins = await prisma.admin.findMany({
+      where: { isVerified: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        createdAt: true,
+        outlets: { // Include associated outlets if needed
+          select: {
+            outletId: true,
+            outlet: {
+              select: { name: true, address: true }
+            }
+          }
+        },
+        permissions: { // Include permissions if needed
+          select: {
+            type: true,
+            isGranted: true
+          }
+        }
+      },
+    });
+    res.status(200).json(verifiedAdmins);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch verified admins', error: err.message });
+  }
+};
+
 export const mapOutletsToAdmin = async (req, res, next) => {
   const { adminId, outletIds } = req.body;
 

@@ -10,79 +10,79 @@ import { getOutletCustomers } from '../controllers/superadmin/customer.controlle
 import { getTickets,ticketClose } from '../controllers/superadmin/ticket.controller.js';
 import { authenticateToken,authorizeRoles,restrictToSuperAdmin } from '../middlewares/auth.middleware.js';
 import { getOutletSalesReport,getOutletRevenueByItems,getRevenueSplit,getWalletRechargeByDay,getProfitLossTrends,getCustomerOverview,getCustomerPerOrder} from '../controllers/superadmin/reports.controller.js';
-import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions } from '../controllers/superadmin/dashboard.controller.js'
+import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins } from '../controllers/superadmin/dashboard.controller.js'
 
-const adminRouter = express.Router();
+const superadminRouter = express.Router();
 
-adminRouter.use(restrictToSuperAdmin);
+superadminRouter.use(restrictToSuperAdmin);
 
-adminRouter.get('/dashboard/', authenticateToken, authorizeRoles('SUPERADMIN'), (req, res) => {
+superadminRouter.get('/dashboard/', authenticateToken, authorizeRoles('SUPERADMIN'), (req, res) => {
   res.json({ message: 'Welcome to Admin Dashboard' });
 });
 
 //Outlet Management
 
-adminRouter.post('/add-outlet/', authenticateToken, authorizeRoles('SUPERADMIN'),addOutlets );
+superadminRouter.post('/add-outlet/', authenticateToken, authorizeRoles('SUPERADMIN'),addOutlets );
 
-adminRouter.get('/get-outlets/', authenticateToken, authorizeRoles('SUPERADMIN'), getOutlets);
+superadminRouter.get('/get-outlets/', authenticateToken, authorizeRoles('SUPERADMIN'), getOutlets);
 
-adminRouter.delete('/remove-outlet/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),removeOutlets);
+superadminRouter.delete('/remove-outlet/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),removeOutlets);
 
 //Staff Management
-adminRouter.post('/outlets/add-staff/', authenticateToken, authorizeRoles('SUPERADMIN'),outletAddStaff);
-adminRouter.post('/outlets/permissions/',authenticateToken,authorizeRoles('SUPERADMIN'), outletStaffPermission);
-adminRouter.get('/outlets/get-staffs/:outletId', authenticateToken, authorizeRoles('SUPERADMIN'),getOutletStaff);
+superadminRouter.post('/outlets/add-staff/', authenticateToken, authorizeRoles('SUPERADMIN'),outletAddStaff);
+superadminRouter.post('/outlets/permissions/',authenticateToken,authorizeRoles('SUPERADMIN'), outletStaffPermission);
+superadminRouter.get('/outlets/get-staffs/:outletId', authenticateToken, authorizeRoles('SUPERADMIN'),getOutletStaff);
 
-adminRouter.put('/outlets/update-staff/:staffId', authenticateToken, authorizeRoles('SUPERADMIN'), outletUpdateStaff);
-adminRouter.delete('/outlets/delete-staff/:staffId', authenticateToken, authorizeRoles('SUPERADMIN'), outletDeleteStaff);
-adminRouter.get('/outlets/staff/:staffId', authenticateToken, authorizeRoles('SUPERADMIN'), getStaffById);
+superadminRouter.put('/outlets/update-staff/:staffId', authenticateToken, authorizeRoles('SUPERADMIN'), outletUpdateStaff);
+superadminRouter.delete('/outlets/delete-staff/:staffId', authenticateToken, authorizeRoles('SUPERADMIN'), outletDeleteStaff);
+superadminRouter.get('/outlets/staff/:staffId', authenticateToken, authorizeRoles('SUPERADMIN'), getStaffById);
 
 
 //Product  management
-adminRouter.get('/outlets/get-products/:outletId',authenticateToken,authorizeRoles('SUPERADMIN'),getProducts);
+superadminRouter.get('/outlets/get-products/:outletId',authenticateToken,authorizeRoles('SUPERADMIN'),getProducts);
 
-adminRouter.post('/outlets/add-product/',authenticateToken,authorizeRoles('SUPERADMIN'),addProduct);
+superadminRouter.post('/outlets/add-product/',authenticateToken,authorizeRoles('SUPERADMIN'),addProduct);
 
-adminRouter.delete('/outlets/delete-product/:id',authenticateToken,authorizeRoles('SUPERADMIN'),deleteProduct);
+superadminRouter.delete('/outlets/delete-product/:id',authenticateToken,authorizeRoles('SUPERADMIN'),deleteProduct);
 
-adminRouter.put('/outlets/update-product/:id',authenticateToken,authorizeRoles('SUPERADMIN'),updateProduct)
+superadminRouter.put('/outlets/update-product/:id',authenticateToken,authorizeRoles('SUPERADMIN'),updateProduct)
 
 //Order management
-adminRouter.get('/outlets/:outletId/orders/', authenticateToken, authorizeRoles('SUPERADMIN'),outletTotalOrders);
+superadminRouter.get('/outlets/:outletId/orders/', authenticateToken, authorizeRoles('SUPERADMIN'),outletTotalOrders);
 
 
 //Inventory management
-adminRouter.get('/outlets/get-stocks/:outletId',authenticateToken,authorizeRoles('SUPERADMIN'),getStocks);
+superadminRouter.get('/outlets/get-stocks/:outletId',authenticateToken,authorizeRoles('SUPERADMIN'),getStocks);
 
-adminRouter.post('/outlets/add-stocks/',authenticateToken,authorizeRoles('SUPERADMIN'),addStock);
+superadminRouter.post('/outlets/add-stocks/',authenticateToken,authorizeRoles('SUPERADMIN'),addStock);
 
-adminRouter.post('/outlets/deduct-stocks/',authenticateToken,authorizeRoles('SUPERADMIN'),deductStock);
+superadminRouter.post('/outlets/deduct-stocks/',authenticateToken,authorizeRoles('SUPERADMIN'),deductStock);
 
-adminRouter.post('/outlets/get-stock-history',authenticateToken,authorizeRoles('SUPERADMIN'),stockHistory);
+superadminRouter.post('/outlets/get-stock-history',authenticateToken,authorizeRoles('SUPERADMIN'),stockHistory);
 
 //Expense Management
-adminRouter.post('/outlets/add-expenses/',authenticateToken,authorizeRoles('SUPERADMIN'),addExpense);
+superadminRouter.post('/outlets/add-expenses/',authenticateToken,authorizeRoles('SUPERADMIN'),addExpense);
 
-adminRouter.get('/outlets/get-expenses/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getExpenses);
+superadminRouter.get('/outlets/get-expenses/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getExpenses);
 
-adminRouter.get('/outlets/get-expenses-bydate/',authenticateToken,authorizeRoles('SUPERADMIN'),getExpenseByDate); 
+superadminRouter.get('/outlets/get-expenses-bydate/',authenticateToken,authorizeRoles('SUPERADMIN'),getExpenseByDate); 
 
 //Wallet Management
 
-adminRouter.get('/outlets/wallet-history/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getCustomersWithWallet);
+superadminRouter.get('/outlets/wallet-history/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getCustomersWithWallet);
 
-adminRouter.get('/outlets/recharge-history/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getRechargeHistoryByOutlet);
+superadminRouter.get('/outlets/recharge-history/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getRechargeHistoryByOutlet);
 
-adminRouter.get('/outlets/paid-wallet/',authenticateToken,authorizeRoles('SUPERADMIN'),getOrdersPaidViaWallet);
+superadminRouter.get('/outlets/paid-wallet/',authenticateToken,authorizeRoles('SUPERADMIN'),getOrdersPaidViaWallet);
 
 //Customer Management
 
-adminRouter.get('/outlets/customers/:outletId/', authenticateToken, authorizeRoles('SUPERADMIN'), getOutletCustomers);
+superadminRouter.get('/outlets/customers/:outletId/', authenticateToken, authorizeRoles('SUPERADMIN'), getOutletCustomers);
 
 //Ticket Management
-adminRouter.get('/outlets/tickets/:outletId',authenticateToken,authorizeRoles('SUPERADMIN'),getTickets);
+superadminRouter.get('/outlets/tickets/:outletId',authenticateToken,authorizeRoles('SUPERADMIN'),getTickets);
 
-adminRouter.post('/outlets/ticket-close/',authenticateToken,authorizeRoles('SUPERADMIN'),ticketClose);
+superadminRouter.post('/outlets/ticket-close/',authenticateToken,authorizeRoles('SUPERADMIN'),ticketClose);
 
 //Notification Management
 
@@ -90,28 +90,30 @@ adminRouter.post('/outlets/ticket-close/',authenticateToken,authorizeRoles('SUPE
 //App management
 
 //Reports Management
-adminRouter.post('/outlets/sales-report/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getOutletSalesReport);
-adminRouter.post('/outlets/revenue-report/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getOutletRevenueByItems);
-adminRouter.post('/outlets/revenue-split/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getRevenueSplit);
-adminRouter.post('/outlets/wallet-recharge-by-day/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getWalletRechargeByDay);
-adminRouter.post('/outlets/profit-loss-trends/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getProfitLossTrends);
-adminRouter.post('/outlets/customer-overview/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getCustomerOverview);
-adminRouter.post('/outlets/customer-per-order/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getCustomerPerOrder);
+superadminRouter.post('/outlets/sales-report/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getOutletSalesReport);
+superadminRouter.post('/outlets/revenue-report/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getOutletRevenueByItems);
+superadminRouter.post('/outlets/revenue-split/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getRevenueSplit);
+superadminRouter.post('/outlets/wallet-recharge-by-day/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getWalletRechargeByDay);
+superadminRouter.post('/outlets/profit-loss-trends/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getProfitLossTrends);
+superadminRouter.post('/outlets/customer-overview/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getCustomerOverview);
+superadminRouter.post('/outlets/customer-per-order/:outletId/',authenticateToken,authorizeRoles('SUPERADMIN'),getCustomerPerOrder);
 
 // Dashboard Management
-adminRouter.get('/dashboard/overview', authenticateToken, authorizeRoles('SUPERADMIN'), getDashboardOverview);
-adminRouter.post('/dashboard/revenue-trend', authenticateToken, authorizeRoles('SUPERADMIN'), getRevenueTrend);
-adminRouter.post('/dashboard/order-status-distribution', authenticateToken, authorizeRoles('SUPERADMIN'), getOrderStatusDistribution);
-adminRouter.post('/dashboard/order-source-distribution', authenticateToken, authorizeRoles('SUPERADMIN'), getOrderSourceDistribution);
-adminRouter.post('/dashboard/top-selling-items', authenticateToken, authorizeRoles('SUPERADMIN'), getTopSellingItems);
-adminRouter.post('/dashboard/peak-time-slots', authenticateToken, authorizeRoles('SUPERADMIN'), getPeakTimeSlots);
+superadminRouter.get('/dashboard/overview', authenticateToken, authorizeRoles('SUPERADMIN'), getDashboardOverview);
+superadminRouter.post('/dashboard/revenue-trend', authenticateToken, authorizeRoles('SUPERADMIN'), getRevenueTrend);
+superadminRouter.post('/dashboard/order-status-distribution', authenticateToken, authorizeRoles('SUPERADMIN'), getOrderStatusDistribution);
+superadminRouter.post('/dashboard/order-source-distribution', authenticateToken, authorizeRoles('SUPERADMIN'), getOrderSourceDistribution);
+superadminRouter.post('/dashboard/top-selling-items', authenticateToken, authorizeRoles('SUPERADMIN'), getTopSellingItems);
+superadminRouter.post('/dashboard/peak-time-slots', authenticateToken, authorizeRoles('SUPERADMIN'), getPeakTimeSlots);
 
 // Superadmin: Pending admin verifications
-adminRouter.get('/pending-admins', authenticateToken, authorizeRoles('SUPERADMIN'), getPendingAdminVerifications);
-adminRouter.post('/verify-admin/:adminId', authenticateToken, authorizeRoles('SUPERADMIN'), verifyAdmin);
+superadminRouter.get('/pending-admins', authenticateToken, authorizeRoles('SUPERADMIN'), getPendingAdminVerifications);
+superadminRouter.post('/verify-admin/:adminId', authenticateToken, authorizeRoles('SUPERADMIN'), verifyAdmin);
+superadminRouter.get('/verified-admins', authenticateToken, authorizeRoles('SUPERADMIN'), getVerifiedAdmins);
 
 //Permssion and outletid assigning
-adminRouter.post('/map-outlets-to-admin', restrictToSuperAdmin, mapOutletsToAdmin);
-adminRouter.post('/assign-admin-permissions', restrictToSuperAdmin, assignAdminPermissions);
+superadminRouter.post('/map-outlets-to-admin', restrictToSuperAdmin, mapOutletsToAdmin);
+superadminRouter.post('/assign-admin-permissions', restrictToSuperAdmin, assignAdminPermissions);
 
-export default adminRouter;
+
+export default superadminRouter;
