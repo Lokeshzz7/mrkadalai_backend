@@ -8,21 +8,44 @@ export const authenticateToken = async (req, res, next) => {
     if (!token) {
       return res.status(401).json({ message: 'Access denied. No token provided.' });
     }
+    
     const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        outletId: true
-      },
-    });
+    
+    if (decoded.role === 'ADMIN') {
+      const admin = await prisma.admin.findUnique({
+        where: { id: decoded.id },
+        select: {
+          id: true,
+          email: true,
+          isVerified: true,
+        },
+      });
 
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid token. User not found.' });
+      if (!admin) {
+        return res.status(401).json({ message: 'Invalid token. Admin not found.' });
+      }
+      if (!admin.isVerified) {
+        return res.status(403).json({ message: 'Admin not verified.' });
+      }
+      req.admin = admin;
+      req.user = { ...admin, role: 'ADMIN' };
+    } else {
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          outletId: true
+        },
+      });
+
+      if (!user) {
+        return res.status(401).json({ message: 'Invalid token. User not found.' });
+      }
+      req.user = user;
     }
-    req.user = user;
+    
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
@@ -57,7 +80,7 @@ export const authenticateAdminToken = async (req, res, next) => {
     if (!admin.isVerified) {
       return res.status(403).json({ message: 'Admin not verified.' });
     }
-    req.admin = admin; // Use req.admin instead of req.user for admins
+    req.admin = admin;
     next();
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
@@ -84,10 +107,13 @@ export const authorizeRoles = (...roles) => {
 };
 
 export const authorizeAdmin = (req, res, next) => {
-  if (!req.admin) {
+  if (!req.admin && !req.user) {
     return res.status(401).json({ message: 'Authentication required.' });
   }
-  next(); // For now, any verified admin is authorized; add more checks if needed
+  if (req.admin || (req.user && req.user.role === 'ADMIN')) {
+    return next();
+  }
+  return res.status(403).json({ message: 'Admin access required.' });
 };
 
 export const restrictToSuperAdmin = [authenticateToken, authorizeRoles('SUPERADMIN')];
@@ -98,11 +124,11 @@ export const restrictToStaffWithPermission = (permissionType) => async (req, res
   if (!req.user) {
     return res.status(401).json({ message: 'Authentication required.' });
   }
-  if (req.user.role === 'ADMIN') {
+  if (req.user.role === 'ADMIN' || req.user.role === 'SUPERADMIN') {
     return next();
   }
   if (req.user.role !== 'STAFF') {
-    return res.status(403).json({ message: 'Unauthorized: Must be STAFF or ADMIN.' });
+    return res.status(403).json({ message: 'Unauthorized: Must be STAFF, ADMIN, or SUPERADMIN.' });
   }
   try {
     const staff = await prisma.staffDetails.findUnique({
@@ -125,4 +151,4 @@ export const restrictToStaffWithPermission = (permissionType) => async (req, res
 
 export const authenticate = authenticateToken;
 export const authorize = authorizeRoles;
-export const restrictToAdminRoutes = [authenticateAdminToken, authorizeAdmin]; // For admin-specific routes
+export const restrictToAdminRoutes = [authenticateAdminToken, authorizeAdmin];

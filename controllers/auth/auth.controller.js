@@ -529,7 +529,7 @@ export const googleSignIn = async (req, res, next) => {
           outletId,
           customerInfo: {
             create: {
-              yearOfStudy: null, // Optional, can be updated later
+              yearOfStudy: null,
               wallet: {
                 create: {
                   balance: 0,
@@ -634,46 +634,84 @@ export const checkAuth = async (req, res) => {
       return res.status(401).json({ message: 'Invalid or expired token' });
     }
 
-    const userId = Number(decoded.id);
-    if (isNaN(userId)) {
-      return res.status(400).json({ message: 'Invalid token payload' });
+    if (decoded.role === 'ADMIN') {
+      const admin = await prisma.admin.findUnique({
+        where: { id: decoded.id },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          isVerified: true,
+          outlets: {
+            include: {
+              outlet: true,
+              permissions: true
+            }
+          }
+        }
+      });
+
+      if (!admin) {
+        return res.status(404).json({ message: 'Admin not found' });
+      }
+
+      if (!admin.isVerified) {
+        return res.status(403).json({ message: 'Admin not verified' });
+      }
+
+      const response = {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        role: 'ADMIN',
+        isVerified: admin.isVerified,
+        outlets: admin.outlets
+      };
+
+      return res.status(200).json({ user: response });
+    } else {
+
+      const userId = Number(decoded.id);
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: 'Invalid token payload' });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: {
+          customerInfo: { include: { wallet: true, cart: true } },
+          staffInfo: { include: { permissions: true } },
+          outlet: true,
+        },
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      const response = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        outletId: user.outletId,
+        outlet: user.outlet,
+        customerDetails: user.customerInfo ? {
+          id: user.customerInfo.id,
+          yearOfStudy: user.customerInfo.yearOfStudy,
+          wallet: user.customerInfo.wallet,
+          cart: user.customerInfo.cart,
+        } : undefined,
+        staffDetails: user.staffInfo ? {
+          id: user.staffInfo.id,
+          staffRole: user.staffInfo.staffRole,
+          permissions: user.staffInfo.permissions,
+        } : undefined,
+      };
+
+      return res.status(200).json({ user: response });
     }
-
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        customerInfo: { include: { wallet: true, cart: true } },
-        staffInfo: { include: { permissions: true } },
-        outlet: true,
-      },
-    });
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    const response = {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone,
-      role: user.role,
-      outletId: user.outletId,
-      outlet: user.outlet,
-      customerDetails: user.customerInfo ? {
-        id: user.customerInfo.id,
-        yearOfStudy: user.customerInfo.yearOfStudy,
-        wallet: user.customerInfo.wallet,
-        cart: user.customerInfo.cart,
-      } : undefined,
-      staffDetails: user.staffInfo ? {
-        id: user.staffInfo.id,
-        staffRole: user.staffInfo.staffRole,
-        permissions: user.staffInfo.permissions,
-      } : undefined,
-    };
-
-    return res.status(200).json({ user: response });
   } catch (error) {
     console.error('Check auth error:', error);
     return res.status(500).json({ message: 'Server error during authentication' });
