@@ -474,3 +474,103 @@ export const assignAdminPermissions = async (req, res, next) => {
     res.status(500).json({ message: "Failed to assign permissions", error: err.message });
   }
 };
+
+export const verifyStaff = async (req, res, next) => {
+  const { userId } = req.params;
+  const { outletId, staffRole } = req.body; // Include staffRole in the request body
+
+  try {
+    const staff = await prisma.user.findUnique({
+      where: { id: Number(userId) },
+      select: { role: true, isVerified: true, staffInfo: { select: { id: true } } },
+    });
+    if (!staff || staff.role !== 'STAFF') {
+      return res.status(404).json({ message: 'Staff not found' });
+    }
+
+    if (staff.isVerified) {
+      return res.status(400).json({ message: 'Staff is already verified' });
+    }
+
+    if (!outletId) {
+      return res.status(400).json({ message: 'outletId is required for verification' });
+    }
+
+    // Step 1: Update the User with outletId and isVerified
+    const updatedUser = await prisma.user.update({
+      where: { id: Number(userId) },
+      data: {
+        isVerified: true,
+        outletId: Number(outletId),
+      },
+      include: { staffInfo: true },
+    });
+
+    // Step 2: Create or update StaffDetails if it doesn't exist
+    let staffInfo;
+    if (!updatedUser.staffInfo) {
+      staffInfo = await prisma.staffDetails.create({
+        data: {
+          userId: Number(userId),
+          staffRole: staffRole || null,
+        },
+      });
+    } else {
+      staffInfo = await prisma.staffDetails.update({
+        where: { userId: Number(userId) },
+        data: {
+          staffRole: staffRole || null,
+        },
+      });
+    }
+
+    // Define default permission types using the PermissionType enum
+    const defaultPermissions = [
+      'BILLING',
+      'PRODUCT_INSIGHTS',
+      'REPORTS',
+      'INVENTORY',
+    ];
+
+    // Create permissions with isGranted: false
+    const permissionCreates = defaultPermissions.map(type => ({
+      staffId: staffInfo.id,
+      type,
+      isGranted: false,
+    }));
+
+    await prisma.staffPermission.createMany({
+      data: permissionCreates,
+    });
+
+    res.status(200).json({
+      message: 'Staff verified successfully',
+      user: { id: updatedUser.id, name: updatedUser.name, email: updatedUser.email, outletId: updatedUser.outletId, staffRole: staffInfo.staffRole }
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to verify staff', error: err.message });
+  }
+};
+
+
+export const getUnverifiedStaff = async (req, res, next) => {
+  try {
+    const unverifiedStaff = await prisma.user.findMany({
+      where: {
+        role: 'STAFF',
+        isVerified: false,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        createdAt: true,
+        outletId: true, // Will be null for unverified staff
+      },
+    });
+    res.status(200).json(unverifiedStaff);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch unverified staff', error: err.message });
+  }
+};

@@ -10,7 +10,7 @@ import { getOutletCustomers } from '../controllers/superadmin/customer.controlle
 import { getTickets,ticketClose } from '../controllers/superadmin/ticket.controller.js';
 import { authenticateToken,authorizeRoles,restrictToSuperAdmin } from '../middlewares/auth.middleware.js';
 import { getOutletSalesReport,getOutletRevenueByItems,getRevenueSplit,getWalletRechargeByDay,getProfitLossTrends,getCustomerOverview,getCustomerPerOrder} from '../controllers/superadmin/reports.controller.js';
-import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins } from '../controllers/superadmin/dashboard.controller.js'
+import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins,verifyStaff,getUnverifiedStaff } from '../controllers/superadmin/dashboard.controller.js'
 
 const superadminRouter = express.Router();
 
@@ -106,11 +106,12 @@ superadminRouter.post('/dashboard/order-source-distribution', authenticateToken,
 superadminRouter.post('/dashboard/top-selling-items', authenticateToken, authorizeRoles('SUPERADMIN'), getTopSellingItems);
 superadminRouter.post('/dashboard/peak-time-slots', authenticateToken, authorizeRoles('SUPERADMIN'), getPeakTimeSlots);
 
-// Superadmin: Pending admin verifications
+// Superadmin: Pending admin and staff verifications
 superadminRouter.get('/pending-admins', authenticateToken, authorizeRoles('SUPERADMIN'), getPendingAdminVerifications);
 superadminRouter.post('/verify-admin/:adminId', authenticateToken, authorizeRoles('SUPERADMIN'), verifyAdmin);
 superadminRouter.get('/verified-admins', authenticateToken, authorizeRoles('SUPERADMIN'), getVerifiedAdmins);
-
+superadminRouter.post('/verify-staff/:userId', authenticateToken, authorizeRoles('SUPERADMIN'), verifyStaff)
+superadminRouter.get('/unverified-staff', authenticateToken, authorizeRoles('SUPERADMIN'), getUnverifiedStaff);
 //Permssion and outletid assigning
 superadminRouter.post('/map-outlets-to-admin', restrictToSuperAdmin, mapOutletsToAdmin);
 superadminRouter.post('/assign-admin-permissions', restrictToSuperAdmin, assignAdminPermissions);

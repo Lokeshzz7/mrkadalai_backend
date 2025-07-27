@@ -160,6 +160,7 @@ export const staffSignup = async (req, res, next) => {
         password: hashedPassword,
         role: 'STAFF',
         phone: phone || null,
+        outletId: null, // Default to null until verified
         isVerified: false,
       },
     });
@@ -172,7 +173,6 @@ export const staffSignup = async (req, res, next) => {
     next(error);
   }
 };
-
 export const superAdminSignIn = async (req, res, next) => {
   const { email, password } = req.body;
 
