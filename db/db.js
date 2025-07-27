@@ -22,7 +22,7 @@ const pool = new Pool({
   },
   keepAlive: true,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
+  connectionTimeoutMillis: 50000,
 });
 
 pool.on("error", (err, client) => {
