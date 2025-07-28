@@ -160,14 +160,39 @@ export const staffSignup = async (req, res, next) => {
         password: hashedPassword,
         role: 'STAFF',
         phone: phone || null,
-        outletId: null, // Default to null until verified
+        outletId: null,
         isVerified: false,
+        staffInfo: {
+          create: {
+            staffRole: "Staff", 
+          }
+        }
+      },
+      include: {
+        outlet: true,
+        staffInfo: { include: { permissions: true } },
       },
     });
 
+    const response = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      outletId: user.outletId,
+      outlet: user.outlet,
+      isVerified: user.isVerified,
+      staffDetails: user.staffInfo ? {
+        id: user.staffInfo.id,
+        staffRole: user.staffInfo.staffRole,
+        permissions: user.staffInfo.permissions,
+      } : null, 
+    };
+
     console.log(`Staff signup request for ${email}. Awaiting SuperAdmin verification.`);
 
-    res.status(201).json({ message: 'Staff signup successful. Awaiting SuperAdmin verification.', userId: user.id });
+    res.status(201).json({ message: 'Staff signup successful. Awaiting SuperAdmin verification.', user: response });
   } catch (error) {
     console.error('Staff signup error:', error);
     next(error);
