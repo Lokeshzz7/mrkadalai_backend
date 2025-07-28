@@ -317,6 +317,14 @@ export const adminSignIn = async (req, res, next) => {
 
     const admin = await prisma.admin.findUnique({
       where: { email },
+      include: {
+        outlets: {
+          include: {
+            outlet: true,
+            permissions: true,
+          },
+        },
+      },
     });
 
     if (!admin) {
@@ -333,7 +341,7 @@ export const adminSignIn = async (req, res, next) => {
     }
 
     const token = jwt.sign(
-      { id: admin.id, email: admin.email, role: 'ADMIN' }, // Using 'ADMIN' as a role for token, though it's an Admin model
+      { id: admin.id, email: admin.email, role: 'ADMIN' }, // No outletId since Admins can have multiple
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
@@ -350,6 +358,11 @@ export const adminSignIn = async (req, res, next) => {
       name: admin.name,
       email: admin.email,
       isVerified: admin.isVerified,
+      outlets: admin.outlets.map(outlet => ({
+        outletId: outlet.outletId,
+        outlet: outlet.outlet,
+        permissions: outlet.permissions,
+      })),
     };
 
     res.status(200).json({ message: 'Admin login successful', admin: response });

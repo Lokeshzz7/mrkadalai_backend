@@ -10,14 +10,23 @@ export const authenticateToken = async (req, res, next) => {
     }
     
     const decoded = jwt.verify(token, JWT_SECRET);
+    console.log('Decoded token:', decoded); // Debug log
     
     if (decoded.role === 'ADMIN') {
+      console.log('Processing ADMIN token'); // Debug log
       const admin = await prisma.admin.findUnique({
         where: { id: decoded.id },
         select: {
           id: true,
+          name: true,
           email: true,
           isVerified: true,
+          outlets: {
+            include: {
+              outlet: true,
+              permissions: true,
+            },
+          },
         },
       });
 
@@ -28,61 +37,39 @@ export const authenticateToken = async (req, res, next) => {
         return res.status(403).json({ message: 'Admin not verified.' });
       }
       req.admin = admin;
-      req.user = { ...admin, role: 'ADMIN' };
+      req.user = { ...admin, role: 'ADMIN' }; // Attach to req.user for role-based checks
+      console.log('Admin authenticated:', req.user); // Debug log
     } else {
+      console.log('Processing USER token with role:', decoded.role); // Debug log
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
         select: {
           id: true,
+          name: true,
           email: true,
           role: true,
-          outletId: true
+          outletId: true,
+          phone: true,
+          isVerified: true,
+          customerInfo: { include: { wallet: true, cart: true } },
+          staffInfo: { include: { permissions: true } },
+          outlet: true,
         },
       });
 
       if (!user) {
         return res.status(401).json({ message: 'Invalid token. User not found.' });
       }
+      if (user.role === 'STAFF' && !user.isVerified) {
+        return res.status(403).json({ message: 'Staff not verified.' });
+      }
       req.user = user;
+      console.log('User authenticated:', req.user); // Debug log
     }
     
     next();
   } catch (error) {
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Invalid token.' });
-    }
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token expired.' });
-    }
-    return res.status(500).json({ message: 'Server error during authentication.' });
-  }
-};
-
-export const authenticateAdminToken = async (req, res, next) => {
-  try {
-    const token = req.cookies.token || req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(401).json({ message: 'Access denied. No token provided.' });
-    }
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const admin = await prisma.admin.findUnique({
-      where: { id: decoded.id },
-      select: {
-        id: true,
-        email: true,
-        isVerified: true,
-      },
-    });
-
-    if (!admin) {
-      return res.status(401).json({ message: 'Invalid token. Admin not found.' });
-    }
-    if (!admin.isVerified) {
-      return res.status(403).json({ message: 'Admin not verified.' });
-    }
-    req.admin = admin;
-    next();
-  } catch (error) {
+    console.error('Authentication error:', error); // Debug log
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ message: 'Invalid token.' });
     }
@@ -95,30 +82,47 @@ export const authenticateAdminToken = async (req, res, next) => {
 
 export const authorizeRoles = (...roles) => {
   return (req, res, next) => {
-    console.log(req.user)
+    console.log('Authorizing roles:', roles); // Debug log
+    console.log('User role:', req.user?.role); // Debug log
     if (!req.user) {
       return res.status(401).json({ message: 'Authentication required.' });
     }
     if (!roles.includes(req.user.role)) {
+      console.log('Access denied. User role:', req.user.role, 'Allowed roles:', roles); // Debug log
       return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
     }
+    console.log('Authorization successful for role:', req.user.role); // Debug log
     next();
   };
 };
 
-export const authorizeAdmin = (req, res, next) => {
-  if (!req.admin && !req.user) {
-    return res.status(401).json({ message: 'Authentication required.' });
-  }
-  if (req.admin || (req.user && req.user.role === 'ADMIN')) {
-    return next();
-  }
-  return res.status(403).json({ message: 'Admin access required.' });
+export const restrictToSuperAdmin = (req, res, next) => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    authorizeRoles('SUPERADMIN')(req, res, next);
+  });
 };
 
-export const restrictToSuperAdmin = [authenticateToken, authorizeRoles('SUPERADMIN')];
-export const restrictToStaff = [authenticateToken, authorizeRoles('STAFF')];
-export const restrictToCustomer = [authenticateToken, authorizeRoles('CUSTOMER')];
+export const restrictToSuperAdminOrAdmin = (req, res, next) => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    authorizeRoles('SUPERADMIN', 'ADMIN')(req, res, next);
+  });
+};
+
+export const restrictToStaff = (req, res, next) => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    authorizeRoles('STAFF')(req, res, next);
+  });
+};
+
+export const restrictToCustomer = (req, res, next) => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    authorizeRoles('CUSTOMER')(req, res, next);
+  });
+};
 
 export const restrictToStaffWithPermission = (permissionType) => async (req, res, next) => {
   if (!req.user) {
@@ -151,4 +155,3 @@ export const restrictToStaffWithPermission = (permissionType) => async (req, res
 
 export const authenticate = authenticateToken;
 export const authorize = authorizeRoles;
-export const restrictToAdminRoutes = [authenticateAdminToken, authorizeAdmin];
