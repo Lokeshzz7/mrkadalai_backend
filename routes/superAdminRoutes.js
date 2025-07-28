@@ -10,7 +10,7 @@ import { getOutletCustomers } from '../controllers/superadmin/customer.controlle
 import { getTickets,ticketClose } from '../controllers/superadmin/ticket.controller.js';
 import { authenticateToken,authorizeRoles,restrictToSuperAdmin } from '../middlewares/auth.middleware.js';
 import { getOutletSalesReport,getOutletRevenueByItems,getRevenueSplit,getWalletRechargeByDay,getProfitLossTrends,getCustomerOverview,getCustomerPerOrder} from '../controllers/superadmin/reports.controller.js';
-import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins,verifyStaff,getUnverifiedStaff } from '../controllers/superadmin/dashboard.controller.js'
+import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins,verifyStaff,getUnverifiedStaff, getVerifiedStaff } from '../controllers/superadmin/dashboard.controller.js'
 
 const superadminRouter = express.Router();
 
@@ -112,6 +112,8 @@ superadminRouter.post('/verify-admin/:adminId', authenticateToken, authorizeRole
 superadminRouter.get('/verified-admins', authenticateToken, authorizeRoles('SUPERADMIN'), getVerifiedAdmins);
 superadminRouter.post('/verify-staff/:userId', authenticateToken, authorizeRoles('SUPERADMIN'), verifyStaff)
 superadminRouter.get('/unverified-staff', authenticateToken, authorizeRoles('SUPERADMIN'), getUnverifiedStaff);
+superadminRouter.get('/verified-staff',authenticateToken,authorizeRoles('SUPERADMIN'),getVerifiedStaff)
+
 //Permssion and outletid assigning
 superadminRouter.post('/map-outlets-to-admin', restrictToSuperAdmin, mapOutletsToAdmin);
 superadminRouter.post('/assign-admin-permissions', restrictToSuperAdmin, assignAdminPermissions);

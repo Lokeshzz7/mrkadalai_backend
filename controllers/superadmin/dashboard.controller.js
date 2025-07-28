@@ -366,7 +366,6 @@ export const mapOutletsToAdmin = async (req, res, next) => {
   }
 
   try {
-    // Check if admin exists and is verified
     const admin = await prisma.admin.findUnique({
       where: { id: Number(adminId) },
       include: { outlets: true },
@@ -376,7 +375,6 @@ export const mapOutletsToAdmin = async (req, res, next) => {
       return res.status(404).json({ message: "Admin not found or not verified" });
     }
 
-    // Check if outlets exist and are active
     const validOutlets = await prisma.outlet.findMany({
       where: { id: { in: outletIds }, isActive: true },
     });
@@ -385,7 +383,6 @@ export const mapOutletsToAdmin = async (req, res, next) => {
       return res.status(400).json({ message: "One or more outlets are invalid or inactive" });
     }
 
-    // Create or update AdminOutlet records
     const existingOutletIds = admin.outlets.map(o => o.outletId);
     const newOutlets = outletIds.filter(id => !existingOutletIds.includes(id));
 
@@ -429,7 +426,6 @@ export const assignAdminPermissions = async (req, res, next) => {
   }
 
   try {
-    // Check if admin exists and is verified
     const admin = await prisma.admin.findUnique({
       where: { id: Number(adminId) },
       include: { outlets: true },
@@ -439,7 +435,6 @@ export const assignAdminPermissions = async (req, res, next) => {
       return res.status(404).json({ message: "Admin not found or not verified" });
     }
 
-    // Check if the outlet is associated with the admin
     const adminOutlet = await prisma.adminOutlet.findUnique({
       where: { adminId_outletId: { adminId: Number(adminId), outletId: Number(outletId) } },
     });
@@ -448,16 +443,15 @@ export const assignAdminPermissions = async (req, res, next) => {
       return res.status(400).json({ message: "Outlet is not mapped to this admin" });
     }
 
-    // Validate and create permissions
     const permissionData = permissions.map(p => ({
       adminOutletId: adminOutlet.id,
-      type: p.type, // e.g., 'ORDER_MANAGEMENT', 'INVENTORY_MANAGEMENT'
+      type: p.type, 
       isGranted: p.isGranted || true,
     }));
 
     await prisma.adminPermission.createMany({
       data: permissionData,
-      skipDuplicates: true, // Avoid duplicate permissions
+      skipDuplicates: true,
     });
 
     const updatedPermissions = await prisma.adminPermission.findMany({
@@ -477,7 +471,7 @@ export const assignAdminPermissions = async (req, res, next) => {
 
 export const verifyStaff = async (req, res, next) => {
   const { userId } = req.params;
-  const { outletId, staffRole } = req.body; // Include staffRole in the request body
+  const { outletId, staffRole } = req.body;
 
   try {
     const staff = await prisma.user.findUnique({
@@ -496,7 +490,6 @@ export const verifyStaff = async (req, res, next) => {
       return res.status(400).json({ message: 'outletId is required for verification' });
     }
 
-    // Step 1: Update the User with outletId and isVerified
     const updatedUser = await prisma.user.update({
       where: { id: Number(userId) },
       data: {
@@ -506,7 +499,6 @@ export const verifyStaff = async (req, res, next) => {
       include: { staffInfo: true },
     });
 
-    // Step 2: Create or update StaffDetails if it doesn't exist
     let staffInfo;
     if (!updatedUser.staffInfo) {
       staffInfo = await prisma.staffDetails.create({
@@ -524,7 +516,6 @@ export const verifyStaff = async (req, res, next) => {
       });
     }
 
-    // Define default permission types using the PermissionType enum
     const defaultPermissions = [
       'BILLING',
       'PRODUCT_INSIGHTS',
@@ -532,7 +523,6 @@ export const verifyStaff = async (req, res, next) => {
       'INVENTORY',
     ];
 
-    // Create permissions with isGranted: false
     const permissionCreates = defaultPermissions.map(type => ({
       staffId: staffInfo.id,
       type,
@@ -566,11 +556,40 @@ export const getUnverifiedStaff = async (req, res, next) => {
         name: true,
         phone: true,
         createdAt: true,
-        outletId: true, // Will be null for unverified staff
+        outletId: true,
       },
     });
     res.status(200).json(unverifiedStaff);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch unverified staff', error: err.message });
+  }
+};
+
+
+export const getVerifiedStaff = async (req, res, next) => {
+  try {
+    const verifiedStaff = await prisma.user.findMany({
+      where: {
+        role: 'STAFF',
+        isVerified: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        createdAt: true,
+        outletId: true,
+        staffInfo: {
+          select: {
+            id: true,
+            staffRole: true,
+          },
+        },
+      },
+    });
+    res.status(200).json(verifiedStaff);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch verified staff', error: err.message });
   }
 };
