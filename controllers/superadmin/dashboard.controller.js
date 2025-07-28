@@ -312,15 +312,93 @@ export const getPendingAdminVerifications = async (req, res, next) => {
   }
 };
 
-// Superadmin verifies an admin
 export const verifyAdmin = async (req, res, next) => {
   const { adminId } = req.params;
+  const { outletIds } = req.body; // Expect an array of outletIds
+
   try {
-    const updated = await prisma.admin.update({
+    const admin = await prisma.admin.findUnique({
       where: { id: Number(adminId) },
-      data: { isVerified: true }
+      select: { isVerified: true },
     });
-    res.status(200).json({ message: 'Admin verified', admin: { id: updated.id, name: updated.name, email: updated.email } });
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    if (admin.isVerified) {
+      return res.status(400).json({ message: 'Admin is already verified' });
+    }
+
+    if (!outletIds || !Array.isArray(outletIds) || outletIds.length === 0) {
+      return res.status(400).json({ message: 'At least one outletId is required for verification' });
+    }
+
+    // Validate that all outletIds exist and are active
+    const validOutlets = await prisma.outlet.findMany({
+      where: { id: { in: outletIds }, isActive: true },
+    });
+
+    if (validOutlets.length !== outletIds.length) {
+      return res.status(400).json({ message: 'One or more outlets are invalid or inactive' });
+    }
+
+    // Update admin to verified status
+    const updatedAdmin = await prisma.admin.update({
+      where: { id: Number(adminId) },
+      data: { isVerified: true },
+      select: { id: true, name: true, email: true },
+    });
+
+    // Create AdminOutlet relations for each outletId
+    const adminOutletCreates = outletIds.map(outletId => ({
+      adminId: Number(adminId),
+      outletId: outletId,
+    }));
+
+    await prisma.adminOutlet.createMany({
+      data: adminOutletCreates,
+    });
+
+    // Define default permission types using AdminPermissionType enum
+    const defaultPermissions = [
+      'ORDER_MANAGEMENT',
+      'STAFF_MANAGEMENT',
+      'INVENTORY_MANAGEMENT',
+      'EXPENDITURE_MANAGEMENT',
+      'WALLET_MANAGEMENT',
+      'CUSTOMER_MANAGEMENT',
+      'TICKET_MANAGEMENT',
+      'NOTIFICATIONS_MANAGEMENT',
+      'PRODUCT_MANAGEMENT',
+      'APP_MANAGEMENT',
+      'REPORTS_ANALYTICS',
+      'SETTINGS',
+      'ONBOARDING',
+      'ADMIN_MANAGEMENT',
+    ];
+
+    // Create permissions with isGranted: false for each AdminOutlet
+    const adminOutlets = await prisma.adminOutlet.findMany({
+      where: { adminId: Number(adminId) },
+    });
+
+    const permissionCreates = adminOutlets.flatMap(adminOutlet =>
+      defaultPermissions.map(type => ({
+        adminOutletId: adminOutlet.id,
+        type,
+        isGranted: false,
+      }))
+    );
+
+    await prisma.adminPermission.createMany({
+      data: permissionCreates,
+      skipDuplicates: true,
+    });
+
+    res.status(200).json({
+      message: 'Admin verified successfully',
+      admin: { id: updatedAdmin.id, name: updatedAdmin.name, email: updatedAdmin.email, outletIds },
+    });
   } catch (err) {
     res.status(500).json({ message: 'Failed to verify admin', error: err.message });
   }
