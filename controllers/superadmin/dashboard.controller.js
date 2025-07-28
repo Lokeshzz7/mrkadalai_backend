@@ -497,10 +497,10 @@ export const mapOutletsToAdmin = async (req, res, next) => {
 
 
 export const assignAdminPermissions = async (req, res, next) => {
-  const { adminId, outletId, permissions } = req.body;
+  const { adminId, permissions } = req.body;
 
-  if (!adminId || !outletId || !permissions || !Array.isArray(permissions) || permissions.length === 0) {
-    return res.status(400).json({ message: "adminId, outletId, and a non-empty array of permissions are required" });
+  if (!adminId || !permissions || typeof permissions !== 'object' || Object.keys(permissions).length === 0) {
+    return res.status(400).json({ message: "adminId and a non-empty permissions object are required" });
   }
 
   try {
@@ -513,33 +513,63 @@ export const assignAdminPermissions = async (req, res, next) => {
       return res.status(404).json({ message: "Admin not found or not verified" });
     }
 
-    const adminOutlet = await prisma.adminOutlet.findUnique({
-      where: { adminId_outletId: { adminId: Number(adminId), outletId: Number(outletId) } },
-    });
+    const adminOutletIds = admin.outlets.map(outlet => outlet.outletId);
+    const requestedOutletIds = Object.keys(permissions).map(id => Number(id));
 
-    if (!adminOutlet) {
-      return res.status(400).json({ message: "Outlet is not mapped to this admin" });
+    const invalidOutlets = requestedOutletIds.filter(id => !adminOutletIds.includes(id));
+    if (invalidOutlets.length > 0) {
+      return res.status(400).json({ message: `Outlets ${invalidOutlets.join(', ')} are not mapped to this admin` });
     }
 
-    const permissionData = permissions.map(p => ({
-      adminOutletId: adminOutlet.id,
-      type: p.type, 
-      isGranted: p.isGranted || true,
-    }));
+    const permissionCreates = [];
+    for (const [outletId, perms] of Object.entries(permissions)) {
+      const numOutletId = Number(outletId);
+      const adminOutlet = await prisma.adminOutlet.findUnique({
+        where: { adminId_outletId: { adminId: Number(adminId), outletId: numOutletId } },
+      });
 
-    await prisma.adminPermission.createMany({
-      data: permissionData,
-      skipDuplicates: true,
+      if (!adminOutlet) {
+        return res.status(400).json({ message: `Outlet ${outletId} is not mapped to this admin` });
+      }
+
+      const permissionData = perms.map(p => ({
+        adminOutletId: adminOutlet.id,
+        type: p.type,
+        isGranted: p.isGranted !== undefined ? p.isGranted : false, // Default to false if not provided
+      }));
+
+      permissionCreates.push(...permissionData);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      for (const perm of permissionCreates) {
+        await tx.adminPermission.upsert({
+          where: {
+            adminOutletId_type: { // Corrected to use the unique fields directly
+              adminOutletId: perm.adminOutletId,
+              type: perm.type,
+            },
+          },
+          create: perm,
+          update: { isGranted: perm.isGranted },
+        });
+      }
     });
 
-    const updatedPermissions = await prisma.adminPermission.findMany({
-      where: { adminOutletId: adminOutlet.id },
-    });
+    const updatedPermissions = {};
+    for (const outletId of requestedOutletIds) {
+      const adminOutlet = await prisma.adminOutlet.findUnique({
+        where: { adminId_outletId: { adminId: Number(adminId), outletId } },
+      });
+      const perms = await prisma.adminPermission.findMany({
+        where: { adminOutletId: adminOutlet.id },
+      });
+      updatedPermissions[outletId] = perms;
+    }
 
     res.status(200).json({
       message: "Permissions assigned successfully",
       adminId,
-      outletId,
       permissions: updatedPermissions,
     });
   } catch (err) {

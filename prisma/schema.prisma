@@ -264,6 +264,7 @@ model AdminPermission {
   isGranted     Boolean             @default(false)
   admin         Admin?              @relation("AdminPermissions", fields: [adminId], references: [id])
   AdminOutlet   AdminOutlet         @relation("AdminOutletPermissions", fields: [adminOutletId], references: [id])
+  @@unique([adminOutletId, type])
 }
 
 enum typeOfDegree {
