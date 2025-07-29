@@ -10,7 +10,7 @@ import { getOutletCustomers } from '../controllers/superadmin/customer.controlle
 import { getTickets,ticketClose } from '../controllers/superadmin/ticket.controller.js';
 import { authenticateToken,authorizeRoles,restrictToSuperAdmin, restrictToSuperAdminOrAdmin } from '../middlewares/auth.middleware.js';
 import { getOutletSalesReport,getOutletRevenueByItems,getRevenueSplit,getWalletRechargeByDay,getProfitLossTrends,getCustomerOverview,getCustomerPerOrder} from '../controllers/superadmin/reports.controller.js';
-import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins,verifyStaff,getUnverifiedStaff, getVerifiedStaff, getAdminDetails } from '../controllers/superadmin/dashboard.controller.js'
+import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins,verifyStaff,getUnverifiedStaff, getVerifiedStaff, getAdminDetails, deleteAdmin } from '../controllers/superadmin/dashboard.controller.js'
 
 const superadminRouter = express.Router();
 
@@ -89,12 +89,14 @@ superadminRouter.post('/dashboard/peak-time-slots', restrictToSuperAdminOrAdmin,
 superadminRouter.get('/pending-admins', restrictToSuperAdmin, getPendingAdminVerifications);
 superadminRouter.post('/verify-admin/:adminId', restrictToSuperAdmin, verifyAdmin);
 superadminRouter.get('/verified-admins', restrictToSuperAdmin, getVerifiedAdmins);
+superadminRouter.post('/admin/:adminId', restrictToSuperAdminOrAdmin, getAdminDetails);
+superadminRouter.delete('/admin/:adminId', restrictToSuperAdmin, deleteAdmin);
 
 // Superadmin: Pending staff verifications
 superadminRouter.post('/verify-staff/:userId', restrictToSuperAdmin, verifyStaff);
 superadminRouter.get('/unverified-staff', restrictToSuperAdmin, getUnverifiedStaff);
 superadminRouter.get('/verified-staff', restrictToSuperAdmin, getVerifiedStaff);
-superadminRouter.get('/admin/:adminId', restrictToSuperAdminOrAdmin, getAdminDetails);
+
 
 //Permssion and outletid assigning
 superadminRouter.post('/map-outlets-to-admin', restrictToSuperAdmin, mapOutletsToAdmin);

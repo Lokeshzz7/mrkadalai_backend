@@ -475,6 +475,40 @@ export const getAdminDetails = async (req, res, next) => {
   }
 };
 
+export const deleteAdmin = async (req, res, next) => {
+  try {
+    const { adminId } = req.params;
+
+    const id = parseInt(adminId, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid admin ID' });
+    }
+
+    const admin = await prisma.admin.findUnique({
+      where: { id },
+    });
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    if (req.user.role === 'SUPERADMIN' && req.user.id === id) {
+      return res.status(403).json({ message: 'Cannot delete your own account' });
+    }
+
+    await prisma.admin.delete({
+      where: { id },
+    });
+
+    res.status(200).json({ message: 'Admin deleted successfully' });
+  } catch (err) {
+    if (err.code === 'P2025') {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+    res.status(500).json({ message: 'Failed to delete admin', error: err.message });
+  }
+};
+
 export const mapOutletsToAdmin = async (req, res, next) => {
   const { adminId, outletIds } = req.body;
 
