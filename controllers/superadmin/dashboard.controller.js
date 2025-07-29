@@ -414,18 +414,9 @@ export const getVerifiedAdmins = async (req, res, next) => {
         name: true,
         phone: true,
         createdAt: true,
-        outlets: { // Include associated outlets if needed
+        outlets: { 
           select: {
-            outletId: true,
-            outlet: {
-              select: { name: true, address: true }
-            }
-          }
-        },
-        permissions: { // Include permissions if needed
-          select: {
-            type: true,
-            isGranted: true
+            outletId: true
           }
         }
       },
@@ -433,6 +424,54 @@ export const getVerifiedAdmins = async (req, res, next) => {
     res.status(200).json(verifiedAdmins);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch verified admins', error: err.message });
+  }
+};
+
+export const getAdminDetails = async (req, res, next) => {
+  try {
+    const { adminId } = req.params;
+
+    const id = parseInt(adminId, 10);
+    if (isNaN(id)) {
+      return res.status(400).json({ message: 'Invalid admin ID' });
+    }
+
+    const admin = await prisma.admin.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phone: true,
+        createdAt: true,
+        isVerified: true,
+        outlets: {
+          select: {
+            outletId: true,
+            outlet: {
+              select: {
+                name: true,
+                address: true,
+              },
+            },
+            permissions: {
+              select: {
+                type: true,
+                isGranted: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!admin) {
+      return res.status(404).json({ message: 'Admin not found' });
+    }
+
+    res.status(200).json(admin);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch admin details', error: err.message });
   }
 };
 
