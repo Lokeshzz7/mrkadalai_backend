@@ -19,49 +19,49 @@ superadminRouter.get('/dashboard/', authenticateToken, authorizeRoles('SUPERADMI
 });
 
 //Outlet Management
-superadminRouter.post('/add-outlet/', restrictToSuperAdmin, addOutlets);
-superadminRouter.get('/get-outlets/', restrictToSuperAdmin, getOutlets);
-superadminRouter.delete('/remove-outlet/:outletId/', restrictToSuperAdmin, removeOutlets);
+superadminRouter.post('/add-outlet/', restrictToSuperAdminOrAdmin, addOutlets);
+superadminRouter.get('/get-outlets/', restrictToSuperAdminOrAdmin, getOutlets);
+superadminRouter.delete('/remove-outlet/:outletId/', restrictToSuperAdminOrAdmin, removeOutlets);
 
 //Staff Management
-superadminRouter.post('/outlets/add-staff/', restrictToSuperAdmin, outletAddStaff);
-superadminRouter.post('/outlets/permissions/', restrictToSuperAdmin, outletStaffPermission);
-superadminRouter.get('/outlets/get-staffs/:outletId', restrictToSuperAdmin, getOutletStaff);
-superadminRouter.put('/outlets/update-staff/:staffId', restrictToSuperAdmin, outletUpdateStaff);
-superadminRouter.delete('/outlets/delete-staff/:staffId', restrictToSuperAdmin, outletDeleteStaff);
-superadminRouter.get('/outlets/staff/:staffId', restrictToSuperAdmin, getStaffById);
+superadminRouter.post('/outlets/add-staff/', restrictToSuperAdminOrAdmin, outletAddStaff);
+superadminRouter.post('/outlets/permissions/', restrictToSuperAdminOrAdmin, outletStaffPermission);
+superadminRouter.get('/outlets/get-staffs/:outletId', restrictToSuperAdminOrAdmin, getOutletStaff);
+superadminRouter.put('/outlets/update-staff/:staffId', restrictToSuperAdminOrAdmin, outletUpdateStaff);
+superadminRouter.delete('/outlets/delete-staff/:staffId', restrictToSuperAdminOrAdmin, outletDeleteStaff);
+superadminRouter.get('/outlets/staff/:staffId', restrictToSuperAdminOrAdmin, getStaffById);
 
 //Product management
-superadminRouter.get('/outlets/get-products/:outletId', restrictToSuperAdmin, getProducts);
-superadminRouter.post('/outlets/add-product/', restrictToSuperAdmin, addProduct);
-superadminRouter.delete('/outlets/delete-product/:id', restrictToSuperAdmin, deleteProduct);
-superadminRouter.put('/outlets/update-product/:id', restrictToSuperAdmin, updateProduct);
+superadminRouter.get('/outlets/get-products/:outletId', restrictToSuperAdminOrAdmin, getProducts);
+superadminRouter.post('/outlets/add-product/', restrictToSuperAdminOrAdmin, addProduct);
+superadminRouter.delete('/outlets/delete-product/:id', restrictToSuperAdminOrAdmin, deleteProduct);
+superadminRouter.put('/outlets/update-product/:id', restrictToSuperAdminOrAdmin, updateProduct);
 
 //Order management
-superadminRouter.get('/outlets/:outletId/orders/', restrictToSuperAdmin, outletTotalOrders);
+superadminRouter.get('/outlets/:outletId/orders/', restrictToSuperAdminOrAdmin, outletTotalOrders);
 
 //Inventory management
-superadminRouter.get('/outlets/get-stocks/:outletId', restrictToSuperAdmin, getStocks);
-superadminRouter.post('/outlets/add-stocks/', restrictToSuperAdmin, addStock);
-superadminRouter.post('/outlets/deduct-stocks/', restrictToSuperAdmin, deductStock);
-superadminRouter.post('/outlets/get-stock-history', restrictToSuperAdmin, stockHistory);
+superadminRouter.get('/outlets/get-stocks/:outletId', restrictToSuperAdminOrAdmin, getStocks);
+superadminRouter.post('/outlets/add-stocks/', restrictToSuperAdminOrAdmin, addStock);
+superadminRouter.post('/outlets/deduct-stocks/', restrictToSuperAdminOrAdmin, deductStock);
+superadminRouter.post('/outlets/get-stock-history', restrictToSuperAdminOrAdmin, stockHistory);
 
 //Expense Management
-superadminRouter.post('/outlets/add-expenses/', restrictToSuperAdmin, addExpense);
-superadminRouter.get('/outlets/get-expenses/:outletId/', restrictToSuperAdmin, getExpenses);
-superadminRouter.get('/outlets/get-expenses-bydate/', restrictToSuperAdmin, getExpenseByDate);
+superadminRouter.post('/outlets/add-expenses/', restrictToSuperAdminOrAdmin, addExpense);
+superadminRouter.get('/outlets/get-expenses/:outletId/', restrictToSuperAdminOrAdmin, getExpenses);
+superadminRouter.get('/outlets/get-expenses-bydate/', restrictToSuperAdminOrAdmin, getExpenseByDate);
 
 //Wallet Management
-superadminRouter.get('/outlets/wallet-history/:outletId/', restrictToSuperAdmin, getCustomersWithWallet);
-superadminRouter.get('/outlets/recharge-history/:outletId/', restrictToSuperAdmin, getRechargeHistoryByOutlet);
-superadminRouter.get('/outlets/paid-wallet/', restrictToSuperAdmin, getOrdersPaidViaWallet);
+superadminRouter.get('/outlets/wallet-history/:outletId/', restrictToSuperAdminOrAdmin, getCustomersWithWallet);
+superadminRouter.get('/outlets/recharge-history/:outletId/', restrictToSuperAdminOrAdmin, getRechargeHistoryByOutlet);
+superadminRouter.get('/outlets/paid-wallet/', restrictToSuperAdminOrAdmin, getOrdersPaidViaWallet);
 
 //Customer Management
-superadminRouter.get('/outlets/customers/:outletId/', restrictToSuperAdmin, getOutletCustomers);
+superadminRouter.get('/outlets/customers/:outletId/', restrictToSuperAdminOrAdmin, getOutletCustomers);
 
 //Ticket Management
-superadminRouter.get('/outlets/tickets/:outletId', restrictToSuperAdmin, getTickets);
-superadminRouter.post('/outlets/ticket-close/', restrictToSuperAdmin, ticketClose);
+superadminRouter.get('/outlets/tickets/:outletId', restrictToSuperAdminOrAdmin, getTickets);
+superadminRouter.post('/outlets/ticket-close/', restrictToSuperAdminOrAdmin, ticketClose);
 
 //Notification Management
 
@@ -70,20 +70,20 @@ superadminRouter.post('/outlets/ticket-close/', restrictToSuperAdmin, ticketClos
 
 //Reports Management
 superadminRouter.post('/outlets/sales-report/:outletId/', restrictToSuperAdminOrAdmin, getOutletSalesReport);
-superadminRouter.post('/outlets/revenue-report/:outletId/', restrictToSuperAdmin, getOutletRevenueByItems);
-superadminRouter.post('/outlets/revenue-split/:outletId/', restrictToSuperAdmin, getRevenueSplit);
-superadminRouter.post('/outlets/wallet-recharge-by-day/:outletId/', restrictToSuperAdmin, getWalletRechargeByDay);
-superadminRouter.post('/outlets/profit-loss-trends/:outletId/', restrictToSuperAdmin, getProfitLossTrends);
-superadminRouter.post('/outlets/customer-overview/:outletId/', restrictToSuperAdmin, getCustomerOverview);
-superadminRouter.post('/outlets/customer-per-order/:outletId/', restrictToSuperAdmin, getCustomerPerOrder);
+superadminRouter.post('/outlets/revenue-report/:outletId/', restrictToSuperAdminOrAdmin, getOutletRevenueByItems);
+superadminRouter.post('/outlets/revenue-split/:outletId/', restrictToSuperAdminOrAdmin, getRevenueSplit);
+superadminRouter.post('/outlets/wallet-recharge-by-day/:outletId/', restrictToSuperAdminOrAdmin, getWalletRechargeByDay);
+superadminRouter.post('/outlets/profit-loss-trends/:outletId/', restrictToSuperAdminOrAdmin, getProfitLossTrends);
+superadminRouter.post('/outlets/customer-overview/:outletId/', restrictToSuperAdminOrAdmin, getCustomerOverview);
+superadminRouter.post('/outlets/customer-per-order/:outletId/', restrictToSuperAdminOrAdmin, getCustomerPerOrder);
 
 // Dashboard Management
-superadminRouter.get('/dashboard/overview', restrictToSuperAdmin, getDashboardOverview);
-superadminRouter.post('/dashboard/revenue-trend', restrictToSuperAdmin, getRevenueTrend);
-superadminRouter.post('/dashboard/order-status-distribution', restrictToSuperAdmin, getOrderStatusDistribution);
-superadminRouter.post('/dashboard/order-source-distribution', restrictToSuperAdmin, getOrderSourceDistribution);
-superadminRouter.post('/dashboard/top-selling-items', restrictToSuperAdmin, getTopSellingItems);
-superadminRouter.post('/dashboard/peak-time-slots', restrictToSuperAdmin, getPeakTimeSlots);
+superadminRouter.get('/dashboard/overview', restrictToSuperAdminOrAdmin, getDashboardOverview);
+superadminRouter.post('/dashboard/revenue-trend', restrictToSuperAdminOrAdmin, getRevenueTrend);
+superadminRouter.post('/dashboard/order-status-distribution', restrictToSuperAdminOrAdmin, getOrderStatusDistribution);
+superadminRouter.post('/dashboard/order-source-distribution', restrictToSuperAdminOrAdmin, getOrderSourceDistribution);
+superadminRouter.post('/dashboard/top-selling-items', restrictToSuperAdminOrAdmin, getTopSellingItems);
+superadminRouter.post('/dashboard/peak-time-slots', restrictToSuperAdminOrAdmin, getPeakTimeSlots);
 
 // Superadmin: Pending admin and staff verifications
 superadminRouter.get('/pending-admins', restrictToSuperAdmin, getPendingAdminVerifications);
