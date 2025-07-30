@@ -262,8 +262,9 @@ model AdminPermission {
   adminId       Int?
   type          AdminPermissionType
   isGranted     Boolean             @default(false)
-  admin         Admin?              @relation("AdminPermissions", fields: [adminId], references: [id])
-  AdminOutlet   AdminOutlet         @relation("AdminOutletPermissions", fields: [adminOutletId], references: [id])
+  admin         Admin?              @relation("AdminPermissions", fields: [adminId], references: [id], onDelete: Cascade)
+  AdminOutlet   AdminOutlet         @relation("AdminOutletPermissions", fields: [adminOutletId], references: [id], onDelete: Cascade)
+  
   @@unique([adminOutletId, type])
 }
 
