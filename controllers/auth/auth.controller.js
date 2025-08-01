@@ -49,7 +49,7 @@ export const customerSignup = async (req, res, next) => {
               },
             },
             cart: {
-              create: {},
+              create: {}, // Initialize empty cart
             },
           },
         },

@@ -61,15 +61,13 @@ export const updateCartItem = async (req, res) => {
 
     const customerId = customer.id;
 
-    // Get or create Cart
+    // Get cart
     let cart = await prisma.cart.findUnique({
       where: { customerId },
     });
 
     if (!cart) {
-      cart = await prisma.cart.create({
-        data: { customerId },
-      });
+      return res.status(500).json({ message: "Cart not found, please contact support" });
     }
 
     const cartId = cart.id;
