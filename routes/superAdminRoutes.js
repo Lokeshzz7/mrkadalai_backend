@@ -11,6 +11,7 @@ import { getTickets,ticketClose } from '../controllers/superadmin/ticket.control
 import { authenticateToken,authorizeRoles,restrictToSuperAdmin, restrictToSuperAdminOrAdmin } from '../middlewares/auth.middleware.js';
 import { getOutletSalesReport,getOutletRevenueByItems,getRevenueSplit,getWalletRechargeByDay,getProfitLossTrends,getCustomerOverview,getCustomerPerOrder} from '../controllers/superadmin/reports.controller.js';
 import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins,verifyStaff,getUnverifiedStaff, getVerifiedStaff, getAdminDetails, deleteAdmin } from '../controllers/superadmin/dashboard.controller.js'
+import { createCoupon, getCoupons, deleteCoupon } from '../controllers/superadmin/coupon.controller.js';
 
 const superadminRouter = express.Router();
 
@@ -62,6 +63,11 @@ superadminRouter.get('/outlets/customers/:outletId/', restrictToSuperAdminOrAdmi
 //Ticket Management
 superadminRouter.get('/outlets/tickets/:outletId', restrictToSuperAdminOrAdmin, getTickets);
 superadminRouter.post('/outlets/ticket-close/', restrictToSuperAdminOrAdmin, ticketClose);
+
+//Coupon Management
+superadminRouter.post('/create-coupon/', restrictToSuperAdminOrAdmin, createCoupon);
+superadminRouter.get('/get-coupons/', restrictToSuperAdminOrAdmin, getCoupons);
+superadminRouter.delete('/delete-coupon/:couponId/', restrictToSuperAdminOrAdmin, deleteCoupon);
 
 //Notification Management
 
