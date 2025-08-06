@@ -25,6 +25,7 @@ model Outlet {
   users        User[]         @relation("OutletUsers")
   admins       AdminOutlet[]  @relation("OutletAdmins")
   coupons      Coupon[]
+  availability OutletAvailability[]
 }
 
 model User {
@@ -269,6 +270,16 @@ model AdminPermission {
   AdminOutlet   AdminOutlet         @relation("AdminOutletPermissions", fields: [adminOutletId], references: [id], onDelete: Cascade)
   
   @@unique([adminOutletId, type])
+}
+
+model OutletAvailability {
+  id              Int      @id @default(autoincrement())
+  outletId        Int
+  date            DateTime @unique
+  nonAvailableSlots Json @db.Json
+  outlet          Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
+
+  @@index([outletId, date])
 }
 
 enum typeOfDegree {
