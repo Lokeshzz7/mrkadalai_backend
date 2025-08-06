@@ -482,13 +482,134 @@ import prisma from "../../prisma/client.js";
 //   }
 // };
 
+const razorpay = new Razorpay({
+  key_id: "rzp_test_CqJOLIOhHoCry6",
+  key_secret: "7kpwsEwlmizR3A17LgaQ9a2E",
+});
+
+export const createRazorpayOrder = async (req, res) => {
+  try {
+    const { amount, currency = 'INR', receipt } = req.body;
+    const userId = req.user.id;
+
+    // Validation
+    if (!amount || amount <= 0) {
+      return res.status(400).json({
+        message: "Invalid amount",
+        error: "Amount must be greater than 0"
+      });
+    }
+
+    // Verify customer exists
+    const customer = await prisma.customerDetails.findUnique({
+      where: { userId },
+      select: { id: true }
+    });
+
+    if (!customer) {
+      return res.status(404).json({
+        message: "Customer not found"
+      });
+    }
+
+    // Create Razorpay order
+    const options = {
+      amount: Math.round(amount), // Amount in paise
+      currency: currency,
+      receipt: receipt || `order_${new Date().getTime()}`,
+      notes: {
+        customer_id: customer.id,
+        user_id: userId
+      }
+    };
+
+    const razorpayOrder = await razorpay.orders.create(options);
+
+    res.status(201).json({
+      message: "Razorpay order created successfully",
+      order: {
+        id: razorpayOrder.id,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        receipt: razorpayOrder.receipt,
+        status: razorpayOrder.status,
+        created_at: razorpayOrder.created_at
+      }
+    });
+
+  } catch (error) {
+    console.error("Error creating Razorpay order:", error);
+    res.status(500).json({
+      message: "Failed to create Razorpay order",
+      error: error.message
+    });
+  }
+};
+
+export const verifyRazorpayPayment = async (req, res) => {
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature
+    } = req.body;
+
+    // Verify signature
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    const isAuthentic = expectedSignature === razorpay_signature;
+
+    if (!isAuthentic) {
+      return res.status(400).json({
+        message: "Payment verification failed",
+        error: "Invalid signature"
+      });
+    }
+
+    // Fetch payment details from Razorpay
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+
+    res.status(200).json({
+      message: "Payment verified successfully",
+      payment: {
+        id: payment.id,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: payment.status,
+        method: payment.method,
+        captured: payment.captured,
+        created_at: payment.created_at
+      }
+    });
+
+  } catch (error) {
+    console.error("Error verifying Razorpay payment:", error);
+    res.status(500).json({
+      message: "Payment verification failed",
+      error: error.message
+    });
+  }
+};
+
+
 export const customerAppOrder = async (req, res) => {
   const transaction = await prisma.$transaction(async (tx) => {
     try {
-      const { totalAmount, paymentMethod, deliverySlot, items, outletId, couponCode } = req.body;
+      const {
+        totalAmount,
+        paymentMethod,
+        deliverySlot,
+        items,
+        outletId,
+        couponCode,
+        paymentDetails, // For Razorpay payments
+      } = req.body;
       const userId = req.user.id;
 
-      // Validation
       if (!totalAmount || !paymentMethod || !deliverySlot || !items || !Array.isArray(items) || items.length === 0 || !outletId) {
         throw new Error("Invalid input: totalAmount, paymentMethod, deliverySlot, outletId, and items are required");
       }
@@ -504,7 +625,32 @@ export const customerAppOrder = async (req, res) => {
         throw new Error("Invalid delivery slot");
       }
 
-      // Check outlet
+      let razorpayPaymentId = null;
+      if ((paymentMethod === 'UPI' || paymentMethod === 'CARD') && paymentDetails) {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = paymentDetails;
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+          throw new Error("Invalid payment details for online payment");
+        }
+        const body = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSignature = crypto
+          .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+          .update(body.toString())
+          .digest("hex");
+        const isAuthentic = expectedSignature === razorpay_signature;
+        if (!isAuthentic) {
+          throw new Error("Payment verification failed: Invalid signature");
+        }
+        const payment = await razorpay.payments.fetch(razorpay_payment_id);
+        if (payment.status !== 'captured' && payment.status !== 'authorized') {
+          throw new Error("Payment not successful");
+        }
+        const paidAmount = payment.amount / 100;
+        if (Math.abs(paidAmount - totalAmount) > 0.01) {
+          throw new Error(`Payment amount mismatch. Expected: ${totalAmount}, Paid: ${paidAmount}`);
+        }
+        razorpayPaymentId = razorpay_payment_id;
+      }
+
       const outlet = await tx.outlet.findUnique({
         where: { id: outletId },
         select: { id: true, isActive: true, name: true },
@@ -516,7 +662,6 @@ export const customerAppOrder = async (req, res) => {
         throw new Error("Selected outlet is currently inactive");
       }
 
-      // Get customer
       const customer = await tx.customerDetails.findUnique({
         where: { userId },
         select: { id: true },
@@ -526,7 +671,6 @@ export const customerAppOrder = async (req, res) => {
       }
       const customerId = customer.id;
 
-      // Validate stock availability
       const stockValidationErrors = [];
       const inventoryUpdates = [];
       for (const item of items) {
@@ -554,7 +698,6 @@ export const customerAppOrder = async (req, res) => {
         throw new Error(`Stock validation failed: ${stockValidationErrors.join(', ')}`);
       }
 
-      // Handle coupon if provided
       let finalTotalAmount = totalAmount;
       let couponDiscount = 0;
       let coupon = null;
@@ -565,11 +708,10 @@ export const customerAppOrder = async (req, res) => {
         if (!coupon || !coupon.isActive) {
           throw new Error("Invalid or inactive coupon");
         }
-        const now = new Date();
+        const now = new Date(); // 10:32 AM IST, August 06, 2025
         if (now < coupon.validFrom || now > coupon.validUntil) {
           throw new Error("Coupon is not valid for the current date");
         }
-        // Check if coupon is specific to the provided outlet
         if (coupon.outletId !== outletId) {
           throw new Error("Coupon is not valid for the selected outlet");
         }
@@ -595,7 +737,6 @@ export const customerAppOrder = async (req, res) => {
         finalTotalAmount = totalAmount - couponDiscount;
       }
 
-      // Handle wallet payment
       let walletTransaction = null;
       if (paymentMethod === 'WALLET') {
         const wallet = await tx.wallet.findUnique({
@@ -625,7 +766,6 @@ export const customerAppOrder = async (req, res) => {
         });
       }
 
-      // Update inventory
       for (const update of inventoryUpdates) {
         await tx.inventory.update({
           where: { productId: update.productId },
@@ -641,7 +781,6 @@ export const customerAppOrder = async (req, res) => {
         });
       }
 
-      // Create order
       const deliveryDate = new Date();
       deliveryDate.setHours(0, 0, 0, 0);
       const order = await tx.order.create({
@@ -655,6 +794,7 @@ export const customerAppOrder = async (req, res) => {
           deliveryDate,
           deliverySlot,
           isPreOrder: false,
+          razorpayPaymentId,
           items: {
             create: items.map((item) => ({
               productId: item.productId,
@@ -677,7 +817,6 @@ export const customerAppOrder = async (req, res) => {
         },
       });
 
-      // Clear cart
       const cart = await tx.cart.findUnique({
         where: { customerId },
       });
@@ -687,7 +826,6 @@ export const customerAppOrder = async (req, res) => {
         });
       }
 
-      // Record coupon usage only if a coupon was applied
       if (coupon) {
         await tx.couponUsage.create({
           data: {
@@ -708,9 +846,10 @@ export const customerAppOrder = async (req, res) => {
         walletTransaction,
         stockUpdates: inventoryUpdates,
         couponDiscount,
+        razorpayPaymentId,
       };
     } catch (error) {
-      throw error;
+      throw error; // This will trigger transaction rollback
     }
   }, { timeout: 15000 });
 
@@ -730,6 +869,7 @@ export const customerAppOrder = async (req, res) => {
         items: result.order.items,
         customer: result.order.customer,
         outlet: result.order.outlet,
+        razorpayPaymentId: result.razorpayPaymentId,
       },
       walletTransaction: result.walletTransaction
         ? {
@@ -757,6 +897,13 @@ export const customerAppOrder = async (req, res) => {
         message: 'Insufficient wallet balance',
         error: error.message,
         type: 'WALLET_ERROR',
+      });
+    }
+    if (error.message.includes('Payment verification failed')) {
+      return res.status(400).json({
+        message: 'Payment verification failed',
+        error: error.message,
+        type: 'PAYMENT_ERROR',
       });
     }
     if (error.message.includes('Coupon is not valid for the selected outlet')) {

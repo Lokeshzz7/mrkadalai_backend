@@ -48,4 +48,8 @@ customerRouter.get("/outlets/tickets/:ticketId", authenticateToken, authorizeRol
 customerRouter.get("/outlets/coupons", authenticateToken, authorizeRoles('CUSTOMER'), getCoupons);
 customerRouter.post("/outlets/apply-coupon", authenticateToken, authorizeRoles('CUSTOMER'), applyCoupon);
 
+// Razorpay Payment Routes
+customerRouter.post("/outlets/create-razorpay-order", authenticateToken, authorizeRoles('CUSTOMER'), createRazorpayOrder);
+customerRouter.post("/outlets/verify-razorpay-payment", authenticateToken, authorizeRoles('CUSTOMER'), verifyRazorpayPayment);
+
 export default customerRouter;

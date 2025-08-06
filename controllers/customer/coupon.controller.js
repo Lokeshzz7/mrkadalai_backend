@@ -14,7 +14,7 @@ export const getCoupons = async (req, res) => {
 
 export const applyCoupon = async (req, res) => {
   try {
-    const { code, currentTotal, outletId } = req.body; // Added outletId to request body
+    const { code, currentTotal, outletId } = req.body;
 
     if (!code || !currentTotal || currentTotal < 0 || !outletId) {
       return res.status(400).json({ message: 'Missing or invalid fields: code, currentTotal, and outletId are required' });
@@ -22,7 +22,6 @@ export const applyCoupon = async (req, res) => {
 
     const userId = req.user.id;
 
-    // Fetch customer details using userId to get the correct cart
     const customer = await prisma.customerDetails.findUnique({
       where: { userId },
       select: { id: true, cart: { select: { id: true, items: { include: { product: true } } } } },
@@ -39,13 +38,11 @@ export const applyCoupon = async (req, res) => {
 
     const cartItems = cart.items;
 
-    // Calculate total cost from cart items
     const calculatedTotal = cartItems.reduce((total, item) => {
       return total + (item.quantity * item.product.price);
     }, 0);
 
-    // Validate that currentTotal matches calculatedTotal
-    if (Math.abs(calculatedTotal - currentTotal) > 0.01) { // Allow for minor floating-point differences
+    if (Math.abs(calculatedTotal - currentTotal) > 0.01) {
       return res.status(400).json({
         message: 'Provided currentTotal does not match calculated cart total',
         calculatedTotal,
@@ -53,7 +50,6 @@ export const applyCoupon = async (req, res) => {
       });
     }
 
-    // Fetch coupon
     const coupon = await prisma.coupon.findUnique({
       where: { code },
     });
@@ -62,17 +58,15 @@ export const applyCoupon = async (req, res) => {
       return res.status(404).json({ message: 'Invalid or inactive coupon' });
     }
 
-    const now = new Date(); // 10:34 PM IST, August 05, 2025
+    const now = new Date();
     if (now < coupon.validFrom || now > coupon.validUntil) {
       return res.status(400).json({ message: 'Coupon is not valid for the current date' });
     }
 
-    // Check if coupon is specific to the provided outlet
     if (coupon.outletId !== outletId) {
       return res.status(400).json({ message: 'Coupon is not valid for the selected outlet' });
     }
 
-    // Check one-time usage per customer (without recording yet)
     const existingUsage = await prisma.couponUsage.findFirst({
       where: { userId, couponId: coupon.id },
     });
@@ -88,13 +82,12 @@ export const applyCoupon = async (req, res) => {
       return res.status(400).json({ message: `Minimum order value of ${coupon.minOrderValue} required` });
     }
 
-    // Calculate discount
     let discount = 0;
     if (coupon.rewardValue > 0) {
       if (coupon.rewardValue < 1) {
-        discount = currentTotal * coupon.rewardValue; // Percentage discount (e.g., 0.1 = 10%)
+        discount = currentTotal * coupon.rewardValue; 
       } else if (coupon.rewardValue <= currentTotal) {
-        discount = coupon.rewardValue; // Fixed amount discount
+        discount = coupon.rewardValue;
       }
     }
 
