@@ -828,3 +828,19 @@ export const getVerifiedStaff = async (req, res, next) => {
     res.status(500).json({ message: 'Failed to fetch verified staff', error: err.message });
   }
 };
+
+export const getLowStockNotifications = async (req, res, next) => {
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: { isRead: false },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        product: { select: { name: true } },
+        outlet: { select: { name: true } },
+      },
+    });
+    res.status(200).json({ notifications });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to fetch low-stock notifications', error: err.message });
+  }
+};

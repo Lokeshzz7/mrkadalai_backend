@@ -26,6 +26,7 @@ model Outlet {
   admins       AdminOutlet[]  @relation("OutletAdmins")
   coupons      Coupon[]
   availability OutletAvailability[]
+  notifications Notification[]
 }
 
 model User {
@@ -107,6 +108,7 @@ model Product {
   outlet       Outlet         @relation(fields: [outletId], references: [id], onDelete: Cascade)
   StockHistory StockHistory[]
   cartItems    CartItem[]     @relation("ProductCartItems")
+  notifications Notification[]
 }
 
 model Inventory {
@@ -280,6 +282,17 @@ model OutletAvailability {
   outlet          Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
 
   @@index([outletId, date])
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  message   String
+  productId Int
+  outletId  Int
+  createdAt DateTime @default(now())
+  isRead    Boolean  @default(false)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  outlet    Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
 }
 
 enum typeOfDegree {

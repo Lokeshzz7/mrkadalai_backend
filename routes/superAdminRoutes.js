@@ -13,6 +13,7 @@ import { getOutletSalesReport,getOutletRevenueByItems,getRevenueSplit,getWalletR
 import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins,verifyStaff,getUnverifiedStaff, getVerifiedStaff, getAdminDetails, deleteAdmin } from '../controllers/superadmin/dashboard.controller.js'
 import { createCoupon, getCoupons, deleteCoupon } from '../controllers/superadmin/coupon.controller.js';
 import { getAvailableDatesAndSlots, getOutletNonAvailabilityPreview, setOutletAvailability } from '../controllers/superadmin/appmanagement.controller.js';
+import { getLowStockNotifications } from '../controllers/superadmin/dashboard.controller.js';
 
 const superadminRouter = express.Router();
 
@@ -71,7 +72,7 @@ superadminRouter.get('/get-coupons/', restrictToSuperAdminOrAdmin, getCoupons);
 superadminRouter.delete('/delete-coupon/:couponId/', restrictToSuperAdminOrAdmin, deleteCoupon);
 
 //Notification Management
-
+superadminRouter.get('/dashboard/low-stock-notifications', restrictToSuperAdminOrAdmin, getLowStockNotifications);
 
 //App management
 superadminRouter.get("/outlets/get-non-availability-preview/:outletId", restrictToSuperAdminOrAdmin, getOutletNonAvailabilityPreview);
