@@ -135,34 +135,69 @@ export const getOrder = async (req, res) => {
 
 export const updateOrder = async (req, res) => {
   const { orderId, orderItemId, status, outletId } = req.body;
-
   if (!orderId || !status || !outletId) {
     return res.status(400).json({ message: "Provide orderId, status, and outletId" });
   }
-
   try {
+    const staffOutletId = parseInt(req.user.outletId);
+    if (parseInt(outletId) !== staffOutletId) {
+      return res.status(403).json({ message: "You can only cancel orders for your assigned outlet" });
+    }
+
     const order = await prisma.order.findFirst({
       where: {
         id: parseInt(orderId),
         outletId: parseInt(outletId),
       },
       include: {
-        items: true
-      }
+        items: true,
+        customer: true,
+      },
     });
-
     if (!order) {
       return res.status(404).json({ message: "Order not found for this outlet" });
     }
 
     // === CANCELLED ===
     if (status === "CANCELLED") {
-      await prisma.$transaction([
-        prisma.order.update({
+      if (order.status !== 'PENDING') {
+        return res.status(400).json({
+          message: `Cannot cancel order. Order status is ${order.status}`,
+        });
+      }
+      await prisma.$transaction(async (tx) => {
+        await tx.order.update({
           where: { id: order.id },
           data: { status: "CANCELLED" },
-        }),
-      ]);
+        });
+
+        // Refund logic based on order type
+        if (order.type === 'APP' && order.customerId) {
+          // Refund to wallet for APP orders
+          let wallet = await tx.wallet.findUnique({
+            where: { customerId: order.customerId },
+          });
+          await tx.wallet.update({
+            where: { customerId: order.customerId },
+            data: {
+              balance: {
+                increment: order.totalAmount,
+              },
+            },
+          });
+          await tx.walletTransaction.create({
+            data: {
+              walletId: wallet.id,
+              amount: order.totalAmount,
+              method: order.paymentMethod,
+              status: 'RECHARGE',
+              createdAt: new Date(),
+            },
+          });
+        } else if (order.type === 'MANUAL') {
+          // None
+        }
+      });
       return res.status(200).json({ message: "Order cancelled" });
     }
 
@@ -187,36 +222,32 @@ export const updateOrder = async (req, res) => {
       if (!item) {
         return res.status(404).json({ message: "Order item not found in this order" });
       }
-
       // If item already delivered, just update order status
       if (item.status === "DELIVERED") {
         await prisma.$transaction([
           prisma.order.update({
             where: { id: order.id },
-            data: { status: "PARTIALLY_DELIVERED" }
-          })
+            data: { status: "PARTIALLY_DELIVERED" },
+          }),
         ]);
         return res.status(200).json({
-          message: "Order remains PARTIALLY_DELIVERED; item was already DELIVERED"
+          message: "Order remains PARTIALLY_DELIVERED; item was already DELIVERED",
         });
       }
-
       await prisma.$transaction([
         prisma.orderItem.update({
           where: { id: item.id },
-          data: { status: "DELIVERED" }
+          data: { status: "DELIVERED" },
         }),
         prisma.order.update({
           where: { id: order.id },
-          data: { status: "PARTIALLY_DELIVERED" }
-        })
+          data: { status: "PARTIALLY_DELIVERED" },
+        }),
       ]);
-
       return res.status(200).json({ message: "Order marked PARTIALLY_DELIVERED; one item delivered" });
     }
 
     return res.status(400).json({ message: "Invalid status value" });
-
   } catch (err) {
     console.error("Error updating item status:", err);
     return res.status(500).json({ message: "Server error while updating item status" });
