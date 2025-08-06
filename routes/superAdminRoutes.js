@@ -108,5 +108,8 @@ superadminRouter.get('/verified-staff', restrictToSuperAdmin, getVerifiedStaff);
 superadminRouter.post('/map-outlets-to-admin', restrictToSuperAdmin, mapOutletsToAdmin);
 superadminRouter.post('/assign-admin-permissions', restrictToSuperAdmin, assignAdminPermissions);
 
+//Coupon Management 
+superadminRouter.post('/create-coupons', restrictToSuperAdmin,createCoupon);
+
 
 export default superadminRouter;

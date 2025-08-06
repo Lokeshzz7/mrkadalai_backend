@@ -483,26 +483,22 @@ import prisma from "../../prisma/client.js";
 // };
 
 export const customerAppOrder = async (req, res) => {
-  // Use database transaction for atomicity
   const transaction = await prisma.$transaction(async (tx) => {
     try {
-      const { totalAmount, paymentMethod, deliverySlot, items, outletId } = req.body;
+      const { totalAmount, paymentMethod, deliverySlot, items, outletId, couponCode } = req.body;
       const userId = req.user.id;
 
-      // Validation (same as before)
+      // Validation
       if (!totalAmount || !paymentMethod || !deliverySlot || !items || !Array.isArray(items) || items.length === 0 || !outletId) {
         throw new Error("Invalid input: totalAmount, paymentMethod, deliverySlot, outletId, and items are required");
       }
-
       if (typeof outletId !== 'number' || outletId <= 0) {
         throw new Error("Invalid outletId: must be a positive number");
       }
-
       const validPaymentMethods = ['WALLET', 'UPI', 'CARD'];
       if (!validPaymentMethods.includes(paymentMethod)) {
         throw new Error("Invalid payment method");
       }
-
       const validDeliverySlots = ['SLOT_11_12', 'SLOT_12_13', 'SLOT_13_14', 'SLOT_14_15', 'SLOT_15_16', 'SLOT_16_17'];
       if (!validDeliverySlots.includes(deliverySlot)) {
         throw new Error("Invalid delivery slot");
@@ -511,13 +507,11 @@ export const customerAppOrder = async (req, res) => {
       // Check outlet
       const outlet = await tx.outlet.findUnique({
         where: { id: outletId },
-        select: { id: true, isActive: true, name: true }
+        select: { id: true, isActive: true, name: true },
       });
-
       if (!outlet) {
         throw new Error("Outlet not found");
       }
-
       if (!outlet.isActive) {
         throw new Error("Selected outlet is currently inactive");
       }
@@ -527,115 +521,134 @@ export const customerAppOrder = async (req, res) => {
         where: { userId },
         select: { id: true },
       });
-
       if (!customer) {
         throw new Error("Customer not found");
       }
-
       const customerId = customer.id;
 
-      // 🚨 CRITICAL: Validate stock availability for ALL items ATOMICALLY
+      // Validate stock availability
       const stockValidationErrors = [];
       const inventoryUpdates = [];
-
       for (const item of items) {
-        // Get current inventory with SELECT FOR UPDATE to prevent race conditions
         const inventory = await tx.inventory.findUnique({
-          where: { productId: item.productId }
+          where: { productId: item.productId },
         });
-
         if (!inventory) {
           stockValidationErrors.push(`Product ${item.productId} not found in inventory`);
           continue;
         }
-
-        // Check if we have enough stock
         if (inventory.quantity < item.quantity) {
           stockValidationErrors.push(
             `Insufficient stock for product ${item.productId}. Available: ${inventory.quantity}, Requested: ${item.quantity}`
           );
           continue;
         }
-
-        // Prepare inventory update
         inventoryUpdates.push({
           productId: item.productId,
           currentStock: inventory.quantity,
           requestedQuantity: item.quantity,
-          newStock: inventory.quantity - item.quantity
+          newStock: inventory.quantity - item.quantity,
         });
       }
-
-      // If any stock validation errors, reject the entire order
       if (stockValidationErrors.length > 0) {
         throw new Error(`Stock validation failed: ${stockValidationErrors.join(', ')}`);
+      }
+
+      // Handle coupon if provided
+      let finalTotalAmount = totalAmount;
+      let couponDiscount = 0;
+      let coupon = null;
+      if (couponCode) {
+        coupon = await tx.coupon.findUnique({
+          where: { code: couponCode },
+        });
+        if (!coupon || !coupon.isActive) {
+          throw new Error("Invalid or inactive coupon");
+        }
+        const now = new Date();
+        if (now < coupon.validFrom || now > coupon.validUntil) {
+          throw new Error("Coupon is not valid for the current date");
+        }
+        // Check if coupon is specific to the provided outlet
+        if (coupon.outletId !== outletId) {
+          throw new Error("Coupon is not valid for the selected outlet");
+        }
+        const existingUsage = await tx.couponUsage.findFirst({
+          where: { userId, couponId: coupon.id },
+        });
+        if (existingUsage) {
+          throw new Error("Coupon already used by this customer");
+        }
+        if (coupon.usedCount >= coupon.usageLimit) {
+          throw new Error("Coupon usage limit reached");
+        }
+        if (totalAmount < coupon.minOrderValue) {
+          throw new Error(`Minimum order value of ${coupon.minOrderValue} required`);
+        }
+        if (coupon.rewardValue > 0) {
+          if (coupon.rewardValue < 1) {
+            couponDiscount = totalAmount * coupon.rewardValue; // Percentage discount
+          } else if (coupon.rewardValue <= totalAmount) {
+            couponDiscount = coupon.rewardValue; // Fixed amount discount
+          }
+        }
+        finalTotalAmount = totalAmount - couponDiscount;
       }
 
       // Handle wallet payment
       let walletTransaction = null;
       if (paymentMethod === 'WALLET') {
         const wallet = await tx.wallet.findUnique({
-          where: { customerId }
+          where: { customerId },
         });
-
         if (!wallet) {
           throw new Error("Wallet not found");
         }
-
-        if (wallet.balance < totalAmount) {
-          throw new Error(`Insufficient wallet balance. Available: ${wallet.balance}, Required: ${totalAmount}`);
+        if (wallet.balance < finalTotalAmount) {
+          throw new Error(`Insufficient wallet balance. Available: ${wallet.balance}, Required: ${finalTotalAmount}`);
         }
-
-        // Update wallet
         await tx.wallet.update({
           where: { customerId },
           data: {
-            balance: wallet.balance - totalAmount,
-            totalUsed: wallet.totalUsed + totalAmount,
-            lastOrder: new Date()
-          }
+            balance: wallet.balance - finalTotalAmount,
+            totalUsed: wallet.totalUsed + finalTotalAmount,
+            lastOrder: new Date(),
+          },
         });
-
-        // Create wallet transaction
         walletTransaction = await tx.walletTransaction.create({
           data: {
             walletId: wallet.id,
-            amount: -totalAmount,
+            amount: -finalTotalAmount,
             method: 'WALLET',
-            status: 'DEDUCT'
-          }
+            status: 'DEDUCT',
+          },
         });
       }
 
-      // 🚨 CRITICAL: Update inventory ATOMICALLY
+      // Update inventory
       for (const update of inventoryUpdates) {
         await tx.inventory.update({
           where: { productId: update.productId },
-          data: {
-            quantity: update.newStock
-          }
+          data: { quantity: update.newStock },
         });
-
-        // Create stock history
         await tx.stockHistory.create({
           data: {
             productId: update.productId,
             outletId,
             quantity: update.requestedQuantity,
-            action: 'REMOVE'
-          }
+            action: 'REMOVE',
+          },
         });
       }
 
       // Create order
       const deliveryDate = new Date();
       deliveryDate.setHours(0, 0, 0, 0);
-
       const order = await tx.order.create({
         data: {
           customerId,
           outletId,
-          totalAmount,
+          totalAmount: finalTotalAmount,
           paymentMethod,
           status: 'PENDING',
           type: 'APP',
@@ -643,68 +656,66 @@ export const customerAppOrder = async (req, res) => {
           deliverySlot,
           isPreOrder: false,
           items: {
-            create: items.map(item => ({
+            create: items.map((item) => ({
               productId: item.productId,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
-              status: 'NOT_DELIVERED'
-            }))
-          }
+              status: 'NOT_DELIVERED',
+            })),
+          },
         },
         include: {
-          items: {
-            include: {
-              product: true
-            }
-          },
+          items: { include: { product: true } },
           customer: {
             include: {
               user: {
-                select: {
-                  name: true,
-                  email: true,
-                  phone: true
-                }
-              }
-            }
+                select: { name: true, email: true, phone: true },
+              },
+            },
           },
-          outlet: {
-            select: {
-              id: true,
-              name: true,
-              address: true
-            }
-          }
-        }
+          outlet: { select: { id: true, name: true, address: true } },
+        },
       });
 
-      // Clear cart after successful order
+      // Clear cart
       const cart = await tx.cart.findUnique({
-        where: { customerId }
+        where: { customerId },
       });
-
       if (cart) {
         await tx.cartItem.deleteMany({
-          where: { cartId: cart.id }
+          where: { cartId: cart.id },
+        });
+      }
+
+      // Record coupon usage only if a coupon was applied
+      if (coupon) {
+        await tx.couponUsage.create({
+          data: {
+            couponId: coupon.id,
+            orderId: order.id,
+            userId,
+            amount: couponDiscount,
+          },
+        });
+        await tx.coupon.update({
+          where: { id: coupon.id },
+          data: { usedCount: coupon.usedCount + 1 },
         });
       }
 
       return {
         order,
         walletTransaction,
-        stockUpdates: inventoryUpdates
+        stockUpdates: inventoryUpdates,
+        couponDiscount,
       };
-
     } catch (error) {
-      throw error; // This will trigger transaction rollback
+      throw error;
     }
-  }, {
-    timeout: 15000
-  });
+  }, { timeout: 15000 });
 
   try {
     const result = await transaction;
-
     res.status(201).json({
       message: 'Order placed successfully',
       order: {
@@ -718,42 +729,47 @@ export const customerAppOrder = async (req, res) => {
         createdAt: result.order.createdAt,
         items: result.order.items,
         customer: result.order.customer,
-        outlet: result.order.outlet
+        outlet: result.order.outlet,
       },
-      walletTransaction: result.walletTransaction ? {
-        id: result.walletTransaction.id,
-        amount: result.walletTransaction.amount,
-        method: result.walletTransaction.method,
-        status: result.walletTransaction.status,
-        createdAt: result.walletTransaction.createdAt
-      } : null,
-      stockUpdates: result.stockUpdates
+      walletTransaction: result.walletTransaction
+        ? {
+            id: result.walletTransaction.id,
+            amount: result.walletTransaction.amount,
+            method: result.walletTransaction.method,
+            status: result.walletTransaction.status,
+            createdAt: result.walletTransaction.createdAt,
+          }
+        : null,
+      stockUpdates: result.stockUpdates,
+      couponDiscount: result.couponDiscount,
     });
-
   } catch (error) {
     console.error("Error creating order:", error);
-
-    // Return specific error messages
     if (error.message.includes('Stock validation failed')) {
       return res.status(400).json({
-        message: "Some items are out of stock",
+        message: 'Some items are out of stock',
         error: error.message,
-        type: 'STOCK_ERROR'
+        type: 'STOCK_ERROR',
       });
     }
-
     if (error.message.includes('Insufficient wallet balance')) {
       return res.status(400).json({
-        message: "Insufficient wallet balance",
+        message: 'Insufficient wallet balance',
         error: error.message,
-        type: 'WALLET_ERROR'
+        type: 'WALLET_ERROR',
       });
     }
-
+    if (error.message.includes('Coupon is not valid for the selected outlet')) {
+      return res.status(400).json({
+        message: 'Coupon is not valid for the selected outlet',
+        error: error.message,
+        type: 'COUPON_ERROR',
+      });
+    }
     return res.status(500).json({
-      message: "Failed to place order",
+      message: 'Failed to place order',
       error: error.message,
-      type: 'SERVER_ERROR'
+      type: 'SERVER_ERROR',
     });
   }
 };
@@ -1014,6 +1030,20 @@ export const customerAppCancelOrder = async (req, res) => {
         });
       }
 
+      // Refund coupon usage if applicable
+      const couponUsage = await tx.couponUsage.findFirst({
+        where: { orderId: parseInt(orderId) },
+      });
+      if (couponUsage) {
+        await tx.couponUsage.delete({
+          where: { id: couponUsage.id },
+        });
+        await tx.coupon.update({
+          where: { id: couponUsage.couponId },
+          data: { usedCount: { decrement: 1 } },
+        });
+      }
+
       return cancelledOrder;
     });
 
@@ -1021,7 +1051,7 @@ export const customerAppCancelOrder = async (req, res) => {
       message: "Order cancelled successfully",
       order: result,
       refundAmount: order.totalAmount,
-      refundMethod: order.paymentMethod === 'CASH' ? 'CASH' : 'WALLET'
+      refundMethod: order.paymentMethod === 'CASH' ? 'CASH' : 'WALLET',
     });
 
   } catch (error) {

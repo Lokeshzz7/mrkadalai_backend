@@ -11,6 +11,7 @@ import {
   getCustomerTickets, 
   getTicketDetails 
 } from "../controllers/customer/ticket.controller.js";
+import { applyCoupon, getCoupons } from "../controllers/customer/coupon.controller.js";
 const customerRouter = express.Router();
 
 // Products Fetch 
@@ -42,5 +43,9 @@ customerRouter.get("/outlets/get-profile",authenticateToken,authorizeRoles('CUST
 customerRouter.post("/outlets/tickets/create", authenticateToken, authorizeRoles('CUSTOMER'), createTicket);
 customerRouter.get("/outlets/tickets", authenticateToken, authorizeRoles('CUSTOMER'), getCustomerTickets);
 customerRouter.get("/outlets/tickets/:ticketId", authenticateToken, authorizeRoles('CUSTOMER'), getTicketDetails);
+
+//Coupon Management
+customerRouter.get("/outlets/coupons", authenticateToken, authorizeRoles('CUSTOMER'), getCoupons);
+customerRouter.post("/outlets/apply-coupon", authenticateToken, authorizeRoles('CUSTOMER'), applyCoupon);
 
 export default customerRouter;

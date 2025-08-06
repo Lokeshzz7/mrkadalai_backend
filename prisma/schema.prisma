@@ -24,6 +24,7 @@ model Outlet {
   StockHistory StockHistory[]
   users        User[]         @relation("OutletUsers")
   admins       AdminOutlet[]  @relation("OutletAdmins")
+  coupons      Coupon[]
 }
 
 model User {
@@ -218,8 +219,10 @@ model Coupon {
   isActive      Boolean       @default(true)
   usageLimit    Int
   usedCount     Int           @default(0)
-  createdAt     DateTime      @default(now())
+  outletId      Int?
+  outlet        Outlet?        @relation(fields: [outletId], references: [id], onDelete: Cascade)
   usages        CouponUsage[]
+  createdAt     DateTime      @default(now())
 }
 
 model CouponUsage {
