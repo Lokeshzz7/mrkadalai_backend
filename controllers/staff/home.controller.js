@@ -197,6 +197,20 @@ export const updateOrder = async (req, res) => {
         } else if (order.type === 'MANUAL') {
           // None
         }
+
+        // Refund coupon for staff cancellation
+        const couponUsage = await tx.couponUsage.findFirst({
+          where: { orderId: parseInt(orderId) },
+        });
+        if (couponUsage) {
+          await tx.couponUsage.delete({
+            where: { id: couponUsage.id },
+          });
+          await tx.coupon.update({
+            where: { id: couponUsage.couponId },
+            data: { usedCount: { decrement: 1 } },
+          });
+        }
       });
       return res.status(200).json({ message: "Order cancelled" });
     }
@@ -253,7 +267,6 @@ export const updateOrder = async (req, res) => {
     return res.status(500).json({ message: "Server error while updating item status" });
   }
 };
-
 
 export const getHomeDetails = async (req, res) => {
   try {
