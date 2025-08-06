@@ -1,6 +1,6 @@
 
 import express from "express";
-import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory,customerAppCancelOrder } from "../controllers/customer/order.controller.js";
+import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory,customerAppCancelOrder, createRazorpayOrder, verifyRazorpayPayment } from "../controllers/customer/order.controller.js";
 import { getProductsAndStocks } from "../controllers/customer/home.controller.js";
 import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 import { rechargeWallet,recentTrans,getWalletDetails,getRechargeHistory } from "../controllers/customer/wallet.controller.js";
