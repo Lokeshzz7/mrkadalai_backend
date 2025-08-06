@@ -12,6 +12,7 @@ import { authenticateToken,authorizeRoles,restrictToSuperAdmin, restrictToSuperA
 import { getOutletSalesReport,getOutletRevenueByItems,getRevenueSplit,getWalletRechargeByDay,getProfitLossTrends,getCustomerOverview,getCustomerPerOrder} from '../controllers/superadmin/reports.controller.js';
 import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins,verifyStaff,getUnverifiedStaff, getVerifiedStaff, getAdminDetails, deleteAdmin } from '../controllers/superadmin/dashboard.controller.js'
 import { createCoupon, getCoupons, deleteCoupon } from '../controllers/superadmin/coupon.controller.js';
+import { getAvailableDatesAndSlots, getOutletNonAvailabilityPreview, setOutletAvailability } from '../controllers/superadmin/appmanagement.controller.js';
 
 const superadminRouter = express.Router();
 
@@ -73,6 +74,9 @@ superadminRouter.delete('/delete-coupon/:couponId/', restrictToSuperAdminOrAdmin
 
 
 //App management
+superadminRouter.get("/outlets/get-non-availability-preview/:outletId", restrictToSuperAdminOrAdmin, getOutletNonAvailabilityPreview);
+superadminRouter.post("/outlets/set-availability/", restrictToSuperAdminOrAdmin, setOutletAvailability);
+superadminRouter.get("/outlets/get-available-dates/:outletId", restrictToSuperAdminOrAdmin, getAvailableDatesAndSlots);
 
 //Reports Management
 superadminRouter.post('/outlets/sales-report/:outletId/', restrictToSuperAdminOrAdmin, getOutletSalesReport);
