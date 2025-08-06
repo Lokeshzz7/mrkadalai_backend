@@ -1038,20 +1038,16 @@ export const customerAppCancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const userId = req.user.id;
-
     if (!orderId || isNaN(parseInt(orderId))) {
       return res.status(400).json({ message: "Invalid order ID" });
     }
-
     const customer = await prisma.customerDetails.findUnique({
       where: { userId },
       select: { id: true },
     });
-
     if (!customer) {
       return res.status(404).json({ message: "Customer not found" });
     }
-
     const order = await prisma.order.findFirst({
       where: {
         id: parseInt(orderId),
@@ -1078,17 +1074,14 @@ export const customerAppCancelOrder = async (req, res) => {
         },
       },
     });
-
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-
     if (order.status !== 'PENDING') {
       return res.status(400).json({
-        message: `Cannot cancel order. Order status is ${order.status}`
+        message: `Cannot cancel order. Order status is ${order.status}`,
       });
     }
-
     const result = await prisma.$transaction(async (tx) => {
       const cancelledOrder = await tx.order.update({
         where: { id: parseInt(orderId) },
@@ -1116,7 +1109,6 @@ export const customerAppCancelOrder = async (req, res) => {
           },
         },
       });
-
       for (const item of order.items) {
         await tx.inventory.updateMany({
           where: {
@@ -1129,7 +1121,6 @@ export const customerAppCancelOrder = async (req, res) => {
             },
           },
         });
-
         await tx.stockHistory.create({
           data: {
             productId: item.productId,
@@ -1140,12 +1131,10 @@ export const customerAppCancelOrder = async (req, res) => {
           },
         });
       }
-
       if (order.paymentMethod === 'WALLET' || order.paymentMethod === 'UPI' || order.paymentMethod === 'CARD') {
         let wallet = await tx.wallet.findUnique({
           where: { customerId: customer.id },
         });
-
         if (!wallet) {
           wallet = await tx.wallet.create({
             data: {
@@ -1156,7 +1145,6 @@ export const customerAppCancelOrder = async (req, res) => {
             },
           });
         }
-
         await tx.wallet.update({
           where: { customerId: customer.id },
           data: {
@@ -1165,7 +1153,6 @@ export const customerAppCancelOrder = async (req, res) => {
             },
           },
         });
-
         await tx.walletTransaction.create({
           data: {
             walletId: wallet.id,
@@ -1176,31 +1163,15 @@ export const customerAppCancelOrder = async (req, res) => {
           },
         });
       }
-
-      // Refund coupon usage if applicable
-      const couponUsage = await tx.couponUsage.findFirst({
-        where: { orderId: parseInt(orderId) },
-      });
-      if (couponUsage) {
-        await tx.couponUsage.delete({
-          where: { id: couponUsage.id },
-        });
-        await tx.coupon.update({
-          where: { id: couponUsage.couponId },
-          data: { usedCount: { decrement: 1 } },
-        });
-      }
-
+      // Removed coupon refund logic
       return cancelledOrder;
     });
-
     res.status(200).json({
       message: "Order cancelled successfully",
       order: result,
       refundAmount: order.totalAmount,
       refundMethod: order.paymentMethod === 'CASH' ? 'CASH' : 'WALLET',
     });
-
   } catch (error) {
     console.error("Error cancelling order:", error);
     res.status(500).json({ message: "Internal server error" });

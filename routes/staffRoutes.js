@@ -17,6 +17,7 @@ staffRouter.get('/outlets/get-home-data/',authenticateToken,authorizeRoles('STAF
 staffRouter.get('/outlets/get-recent-orders/:outletId/',authenticateToken,authorizeRoles('STAFF'),recentOrders);
 staffRouter.get('/outlets/get-order/:outletId/:orderId/',authenticateToken,authorizeRoles('STAFF'),getOrder);
 staffRouter.put('/outlets/update-order/',authenticateToken,authorizeRoles('STAFF'),updateOrder);
+
 //Manual Order
 staffRouter.post('/outlets/add-manual-order/',authenticateToken,authorizeRoles('STAFF'),addManualOrder);
 staffRouter.get('/outlets/get-products-in-stock/:outletId',authenticateToken,authorizeRoles('STAFF'),getProducts);
