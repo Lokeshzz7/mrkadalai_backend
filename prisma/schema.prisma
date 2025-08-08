@@ -277,10 +277,10 @@ model AdminPermission {
 model OutletAvailability {
   id              Int      @id @default(autoincrement())
   outletId        Int
-  date            DateTime @unique
+  date            DateTime
   nonAvailableSlots Json @db.Json
   outlet          Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
-
+  @@unique([outletId, date])
   @@index([outletId, date])
 }
 

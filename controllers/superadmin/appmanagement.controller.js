@@ -40,21 +40,27 @@ export const getOutletNonAvailabilityPreview = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
-// POST: Update non-available dates and slots (clear and replace)
+
 export const setOutletAvailability = async (req, res) => {
   const { outletId, nonAvailableDates } = req.body;
-  if (!outletId || !nonAvailableDates || !Array.isArray(nonAvailableDates)) {
+  
+  const parsedOutletId = parseInt(outletId);
+  if (!outletId || isNaN(parsedOutletId)) {
+    return res.status(400).json({ message: "Valid outletId is required" });
+  }
+  
+  if (!nonAvailableDates || !Array.isArray(nonAvailableDates)) {
     return res.status(400).json({ message: "outletId and nonAvailableDates array are required" });
   }
 
   try {
-    await prisma.$transaction(async (tx) => {
-      // Clear existing records for the outlet
-      await tx.outletAvailability.deleteMany({
-        where: { outletId },
+
+    await prisma.$transaction(async (prismaTransaction) => {
+
+      await prismaTransaction.outletAvailability.deleteMany({
+        where: { outletId: parsedOutletId },
       });
 
-      // Insert updated records
       for (const entry of nonAvailableDates) {
         const { date, nonAvailableSlots } = entry;
         if (!date || !nonAvailableSlots || !Array.isArray(nonAvailableSlots)) {
@@ -64,15 +70,18 @@ export const setOutletAvailability = async (req, res) => {
         if (isNaN(parsedDate.getTime())) {
           throw new Error(`Invalid date format for ${date}`);
         }
-        await tx.outletAvailability.create({
+        
+        await prismaTransaction.outletAvailability.create({
           data: {
-            outletId,
+            outletId: parsedOutletId,
             date: parsedDate,
-            nonAvailableSlots,
+            nonAvailableSlots: nonAvailableSlots,
           },
         });
       }
     });
+    
+    console.log("Transaction completed successfully");
     res.status(200).json({ message: "Outlet availability updated successfully" });
   } catch (error) {
     console.error("Error setting outlet availability:", error);
@@ -80,7 +89,6 @@ export const setOutletAvailability = async (req, res) => {
   }
 };
 
-// GET: Get available dates and slots for the next 30 days (for customer-facing use)
 export const getAvailableDatesAndSlots = async (req, res) => {
   const { outletId } = req.params;
   if (!outletId || isNaN(parseInt(outletId))) {
@@ -89,11 +97,10 @@ export const getAvailableDatesAndSlots = async (req, res) => {
 
   try {
     const outletIdNum = parseInt(outletId);
-    const today = new Date("2025-08-06T15:16:00Z"); // 03:16 PM IST, August 06, 2025
+    const today = new Date(); 
     const next30Days = new Date(today);
     next30Days.setDate(today.getDate() + 30);
 
-    // Get all non-available dates and slots for the outlet
     const nonAvailable = await prisma.outletAvailability.findMany({
       where: {
         outletId: outletIdNum,
