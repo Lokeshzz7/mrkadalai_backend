@@ -608,7 +608,7 @@ export const customerAppOrder = async (req, res) => {
         items,
         outletId,
         couponCode,
-        paymentDetails, // For Razorpay payments
+        paymentDetails,
       } = req.body;
       const userId = req.user.id;
 
@@ -618,7 +618,7 @@ export const customerAppOrder = async (req, res) => {
       if (typeof outletId !== 'number' || outletId <= 0) {
         throw new Error("Invalid outletId: must be a positive number");
       }
-      const validPaymentMethods = ['WALLET', 'UPI', 'CARD'];
+      const validPaymentMethods = ['WALLET', 'UPI', 'CARD', 'CASH'];
       if (!validPaymentMethods.includes(paymentMethod)) {
         throw new Error("Invalid payment method");
       }
@@ -635,7 +635,7 @@ export const customerAppOrder = async (req, res) => {
         }
         const body = razorpay_order_id + "|" + razorpay_payment_id;
         const expectedSignature = crypto
-          .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+          .createHmac("sha256", razorpay.key_secret) // Use razorpay instance secret
           .update(body.toString())
           .digest("hex");
         const isAuthentic = expectedSignature === razorpay_signature;
@@ -710,11 +710,11 @@ export const customerAppOrder = async (req, res) => {
         if (!coupon || !coupon.isActive) {
           throw new Error("Invalid or inactive coupon");
         }
-        const now = new Date(); // 10:32 AM IST, August 06, 2025
+        const now = new Date(); // 02:35 PM IST, August 11, 2025
         if (now < coupon.validFrom || now > coupon.validUntil) {
           throw new Error("Coupon is not valid for the current date");
         }
-        if (coupon.outletId !== outletId) {
+        if (coupon.outletId !== outletId && coupon.outletId !== null) {
           throw new Error("Coupon is not valid for the selected outlet");
         }
         const existingUsage = await tx.couponUsage.findFirst({
@@ -737,6 +737,9 @@ export const customerAppOrder = async (req, res) => {
           }
         }
         finalTotalAmount = totalAmount - couponDiscount;
+      } else {
+        // No coupon provided, use totalAmount as finalTotalAmount
+        finalTotalAmount = totalAmount;
       }
 
       let walletTransaction = null;
