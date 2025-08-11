@@ -68,7 +68,7 @@ superadminRouter.post('/outlets/ticket-close/', restrictToSuperAdminOrAdmin, tic
 
 //Coupon Management
 superadminRouter.post('/create-coupon/', restrictToSuperAdminOrAdmin, createCoupon);
-superadminRouter.get('/get-coupons/', restrictToSuperAdminOrAdmin, getCoupons);
+superadminRouter.get('/get-coupons/:outletId', restrictToSuperAdminOrAdmin, getCoupons);
 superadminRouter.delete('/delete-coupon/:couponId/', restrictToSuperAdminOrAdmin, deleteCoupon);
 
 //Notification Management

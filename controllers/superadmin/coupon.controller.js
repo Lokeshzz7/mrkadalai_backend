@@ -44,8 +44,9 @@ export const createCoupon = async (req, res) => {
 
 export const getCoupons = async (req, res) => {
   try {
+    const { outletId } = req.params;
     const coupons = await prisma.coupon.findMany({
-      include: { outlet: true },
+      where: { outletId: parseInt(outletId) },
     });
     res.status(200).json({ message: "Coupons fetched successfully", data: coupons });
   } catch (error) {
