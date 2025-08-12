@@ -45,7 +45,7 @@ customerRouter.get("/outlets/tickets", authenticateToken, authorizeRoles('CUSTOM
 customerRouter.get("/outlets/tickets/:ticketId", authenticateToken, authorizeRoles('CUSTOMER'), getTicketDetails);
 
 //Coupon Management
-customerRouter.get("/outlets/coupons", authenticateToken, authorizeRoles('CUSTOMER'), getCoupons);
+customerRouter.get("/outlets/coupons/:outletId", authenticateToken, authorizeRoles('CUSTOMER'), getCoupons);
 customerRouter.post("/outlets/apply-coupon", authenticateToken, authorizeRoles('CUSTOMER'), applyCoupon);
 
 // Razorpay Payment Routes
