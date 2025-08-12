@@ -26,7 +26,9 @@ export const addManualOrder = async (req, res) => {
     }
 
     const order = await prisma.$transaction(async (tx) => {
-      // Create order and order items
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       const createdOrder = await tx.order.create({
         data: {
           outletId,
@@ -35,6 +37,9 @@ export const addManualOrder = async (req, res) => {
           status: 'DELIVERED',
           type: 'MANUAL',
           customerId: null,
+          deliveryDate: today,
+          isPreOrder: false,
+          deliveredAt: new Date(),
           items: {
             create: items.map(item => ({
               productId: item.productId,

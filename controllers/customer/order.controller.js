@@ -609,6 +609,7 @@ export const customerAppOrder = async (req, res) => {
         outletId,
         couponCode,
         paymentDetails,
+        requestedDeliveryDate
       } = req.body;
       const userId = req.user.id;
 
@@ -786,8 +787,27 @@ export const customerAppOrder = async (req, res) => {
         });
       }
 
-      const deliveryDate = new Date();
-      deliveryDate.setHours(0, 0, 0, 0);
+      const deliveryInput = requestedDeliveryDate ?? req.body.deliveryDate ?? req.body.deliverydate;
+      let orderDeliveryDate;
+      let isPreOrder = false;
+
+      if (deliveryInput) {
+        // Parse the requested delivery date
+        orderDeliveryDate = new Date(deliveryInput);
+        orderDeliveryDate.setHours(0, 0, 0, 0);
+
+        // Check if it's a preorder (not today)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        isPreOrder = orderDeliveryDate.getTime() !== today.getTime();
+      } else {
+        // Default to today if no delivery date provided
+        orderDeliveryDate = new Date();
+        orderDeliveryDate.setHours(0, 0, 0, 0);
+        isPreOrder = false;
+      }
+      
       const order = await tx.order.create({
         data: {
           customerId,
@@ -796,9 +816,9 @@ export const customerAppOrder = async (req, res) => {
           paymentMethod,
           status: 'PENDING',
           type: 'APP',
-          deliveryDate,
+          deliveryDate: orderDeliveryDate,
           deliverySlot,
-          isPreOrder: false,
+          isPreOrder,
           razorpayPaymentId,
           items: {
             create: items.map((item) => ({
@@ -1092,6 +1112,7 @@ export const customerAppCancelOrder = async (req, res) => {
         where: { id: parseInt(orderId) },
         data: {
           status: 'CANCELLED',
+          deliveredAt: null, // Reset deliveredAt when order is cancelled
         },
         include: {
           items: {

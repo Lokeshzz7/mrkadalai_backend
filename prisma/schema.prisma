@@ -146,10 +146,10 @@ model Order {
   deliverySlot      DeliverySlot?
   isPreOrder        Boolean          @default(false)
   razorpayPaymentId String?
+  deliveredAt       DateTime?
   customer          CustomerDetails? @relation("CustomerOrders", fields: [customerId], references: [id])
   outlet            Outlet           @relation(fields: [outletId], references: [id], onDelete: Cascade)
   items             OrderItem[]
-  // Removed User relation; replaced with customer relation to CustomerDetails
 }
 
 model OrderItem {
@@ -223,7 +223,7 @@ model Coupon {
   isActive      Boolean       @default(true)
   usageLimit    Int
   usedCount     Int           @default(0)
-  usageType String?           @default(null)
+  usageType String?
   outletId      Int?
   outlet        Outlet?        @relation(fields: [outletId], references: [id], onDelete: Cascade)
   usages        CouponUsage[]
