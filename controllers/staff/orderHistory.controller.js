@@ -16,7 +16,7 @@ export const getOrderHistory = async (req, res) => {
     const orders = await prisma.order.findMany({
       where: {
         outletId,
-        createdAt: {
+        deliveryDate: {
           gte: startDate,
           lt: endDate,
         },
