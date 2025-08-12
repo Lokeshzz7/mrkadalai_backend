@@ -1,7 +1,7 @@
 
 import express from "express";
 import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory,customerAppCancelOrder, createRazorpayOrder, verifyRazorpayPayment } from "../controllers/customer/order.controller.js";
-import { getProductsAndStocks } from "../controllers/customer/home.controller.js";
+import { getAvailableDatesAndSlotsForCustomer, getProductsAndStocks } from "../controllers/customer/home.controller.js";
 import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 import { rechargeWallet,recentTrans,getWalletDetails,getRechargeHistory } from "../controllers/customer/wallet.controller.js";
 import { getCart, updateCartItem } from "../controllers/customer/cart.controller.js";
@@ -12,10 +12,12 @@ import {
   getTicketDetails 
 } from "../controllers/customer/ticket.controller.js";
 import { applyCoupon, getCoupons } from "../controllers/customer/coupon.controller.js";
+
 const customerRouter = express.Router();
 
 // Products Fetch 
 customerRouter.get("/outlets/get-product/",authenticateToken,authorizeRoles('CUSTOMER'),getProductsAndStocks);
+customerRouter.get("/outlets/get-appdates/:outletId",authenticateToken,authorizeRoles('CUSTOMER'),getAvailableDatesAndSlotsForCustomer)
 
 //Order management
 customerRouter.post("/outlets/customer-order/",authenticateToken,authorizeRoles('CUSTOMER'),customerAppOrder)
