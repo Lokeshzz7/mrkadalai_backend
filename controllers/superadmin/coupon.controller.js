@@ -30,7 +30,7 @@ export const createCoupon = async (req, res) => {
         isActive: isActive !== undefined ? isActive : true,
         usageLimit: usageLimit || null,
         usedCount: 0,
-        outletId: outletId || null,
+        outletId: outletId,
         createdAt: new Date(),
       },
     });

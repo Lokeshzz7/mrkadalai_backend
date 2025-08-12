@@ -2,8 +2,9 @@ import prisma from "../../prisma/client.js";
 
 export const getCoupons = async (req, res) => {
   try {
+    const { outletId } = req.params;
     const coupons = await prisma.coupon.findMany({
-      where: { isActive: true },
+      where: { outletId: parseInt(outletId), isActive: true  },
       orderBy: { createdAt: 'desc' },
     });
     res.status(200).json(coupons);
