@@ -27,6 +27,7 @@ model Outlet {
   coupons      Coupon[]
   availability OutletAvailability[]
   notifications Notification[]
+  appManagement OutletAppManagement[]
 }
 
 model User {
@@ -297,6 +298,17 @@ model Notification {
   outlet    Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
 }
 
+model OutletAppManagement {
+  id        Int              @id @default(autoincrement())
+  outletId  Int
+  feature   OutletAppFeature
+  isEnabled Boolean          @default(false)
+  outlet    Outlet           @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  
+  @@unique([outletId, feature])
+  @@index([outletId, feature])
+}
+
 enum typeOfDegree {
   UG
   PG
@@ -393,4 +405,11 @@ enum DeliverySlot {
   SLOT_14_15
   SLOT_15_16
   SLOT_16_17
+}
+
+enum OutletAppFeature {
+  APP
+  UPI
+  LIVE_COUNTER
+  COUPONS
 }

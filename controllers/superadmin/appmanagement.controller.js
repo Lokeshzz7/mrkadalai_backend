@@ -1,5 +1,112 @@
 import prisma from "../../prisma/client.js";
 
+export const getOutletAppFeatures = async (req, res) => {
+  const { outletId } = req.params;
+  
+  if (!outletId || isNaN(parseInt(outletId))) {
+    return res.status(400).json({ message: "Valid outletId is required" });
+  }
+  
+  try {
+    const outletIdNum = parseInt(outletId);
+
+    const outlet = await prisma.outlet.findUnique({
+      where: { id: outletIdNum },
+    });
+
+    if (!outlet) {
+      return res.status(400).json({ message: "Outlet not found" });
+    }
+    
+    const features = await prisma.outletAppManagement.findMany({
+      where: {
+        outletId: outletIdNum,
+      },
+    });
+
+    const allFeatures = ['APP', 'UPI', 'LIVE_COUNTER', 'COUPONS'];
+    const featureStatus = {};
+
+    allFeatures.forEach(feature => {
+      const existingFeature = features.find(f => f.feature === feature);
+      featureStatus[feature] = existingFeature ? existingFeature.isEnabled : false;
+    });
+
+    res.status(200).json({ 
+      message: "Outlet app features fetched successfully", 
+      data: featureStatus 
+    });
+  } catch (error) {
+    console.error("Error fetching outlet app features:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
+
+export const updateOutletAppFeatures = async (req, res) => {
+  const { outletId, features } = req.body;
+  
+  if (!outletId || !features || !Array.isArray(features)) {
+    return res.status(400).json({ message: "outletId and features array are required" });
+  }
+
+  const validFeatures = ['APP', 'UPI', 'LIVE_COUNTER', 'COUPONS'];
+  
+  for (const featureObj of features) {
+    if (!featureObj.feature || !validFeatures.includes(featureObj.feature) || typeof featureObj.isEnabled !== 'boolean') {
+      return res.status(400).json({ 
+        message: "Each feature must have 'feature' (APP, UPI, LIVE_COUNTER, COUPONS) and 'isEnabled' (boolean)" 
+      });
+    }
+  }
+
+  try {
+    const outletIdNum = parseInt(outletId);
+    
+    const outlet = await prisma.outlet.findUnique({
+      where: { id: outletIdNum }
+    });
+
+    if (!outlet) {
+      return res.status(404).json({ message: "Outlet not found" });
+    }
+
+    const results = await prisma.$transaction(async (prismaTransaction) => {
+      const updateResults = [];
+      
+      for (const featureObj of features) {
+        const result = await prismaTransaction.outletAppManagement.upsert({
+          where: {
+            outletId_feature: {
+              outletId: outletIdNum,
+              feature: featureObj.feature
+            }
+          },
+          update: {
+            isEnabled: featureObj.isEnabled
+          },
+          create: {
+            outletId: outletIdNum,
+            feature: featureObj.feature,
+            isEnabled: featureObj.isEnabled
+          }
+        });
+        updateResults.push(result);
+      }
+      
+      return updateResults;
+    });
+
+    res.status(200).json({ 
+      message: "Outlet app features updated successfully", 
+      data: results 
+    });
+  } catch (error) {
+    console.error("Error updating multiple outlet app features:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
+};
+
 export const getOutletNonAvailabilityPreview = async (req, res) => {
   const { outletId } = req.params;
   if (!outletId || isNaN(parseInt(outletId))) {
