@@ -839,6 +839,11 @@ export const customerAppOrder = async (req, res) => {
         },
       });
 
+      await tx.customerDetails.update({
+        where: { userId },
+        data: { orderCount: { increment: 1 } },
+      });
+
       const cart = await tx.cart.findUnique({
         where: { customerId },
       });
