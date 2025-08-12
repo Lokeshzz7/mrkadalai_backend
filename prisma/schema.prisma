@@ -48,6 +48,7 @@ model User {
 model CustomerDetails {
   id          Int           @id @default(autoincrement())
   userId      Int           @unique
+  orderCount Int @default(0)
   yearOfStudy Int?
   degree      typeOfDegree?
   bio         String?
@@ -222,6 +223,7 @@ model Coupon {
   isActive      Boolean       @default(true)
   usageLimit    Int
   usedCount     Int           @default(0)
+  usageType String?           @default(null)
   outletId      Int?
   outlet        Outlet?        @relation(fields: [outletId], references: [id], onDelete: Cascade)
   usages        CouponUsage[]
