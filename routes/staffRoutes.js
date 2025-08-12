@@ -5,7 +5,7 @@ import { getHomeDetails, getOrder, recentOrders, updateOrder } from '../controll
 import { getStocks,addStock,deductStock,stockHistory } from '../controllers/staff/inventory.controller.js';
 import { getRechargeHistory,addRecharge } from '../controllers/staff/wallet.controller.js';
 import { OutletCurrentOrder } from '../controllers/staff/notification.controller.js';
-import { getOrderHistory } from '../controllers/staff/orderHistory.controller.js';
+import { getAvailableDatesAndSlotsForStaff, getOrderHistory } from '../controllers/staff/orderHistory.controller.js';
 
 const staffRouter = express.Router();
 
@@ -38,5 +38,6 @@ staffRouter.post('/outlets/recharge-wallet/',authenticateToken,authorizeRoles('S
 
 //Order management
 staffRouter.get('/outlets/get-order-history/',authenticateToken,authorizeRoles('STAFF'),getOrderHistory);
+staffRouter.get('/outlets/get-orderdates/:outletId/',authenticateToken,authorizeRoles('STAFF'),getAvailableDatesAndSlotsForStaff);
 
 export default staffRouter;

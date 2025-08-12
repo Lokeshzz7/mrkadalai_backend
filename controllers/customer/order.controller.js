@@ -794,17 +794,14 @@ export const customerAppOrder = async (req, res) => {
       if (deliveryInput) {
         // Parse the requested delivery date
         orderDeliveryDate = new Date(deliveryInput);
-        orderDeliveryDate.setHours(0, 0, 0, 0);
 
         // Check if it's a preorder (not today)
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
 
         isPreOrder = orderDeliveryDate.getTime() !== today.getTime();
       } else {
         // Default to today if no delivery date provided
         orderDeliveryDate = new Date();
-        orderDeliveryDate.setHours(0, 0, 0, 0);
         isPreOrder = false;
       }
       
