@@ -15,6 +15,7 @@ import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import staffRoutes from './routes/staffRoutes.js';
 import customerRouter from './routes/customerRoutes.js';
+import './services/notificationScheduler.js'; // Initialize notification scheduler
 
 app.use(cookieParser());
 

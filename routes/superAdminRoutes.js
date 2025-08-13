@@ -14,6 +14,13 @@ import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistrib
 import { createCoupon, getCoupons, deleteCoupon } from '../controllers/superadmin/coupon.controller.js';
 import { getAvailableDatesAndSlots, getOutletNonAvailabilityPreview, setOutletAvailability, getOutletAppFeatures, updateOutletAppFeatures } from '../controllers/superadmin/appmanagement.controller.js';
 import { getLowStockNotifications } from '../controllers/superadmin/dashboard.controller.js';
+import { 
+  createScheduledNotification, 
+  getScheduledNotifications, 
+  cancelScheduledNotification, 
+  sendImmediateNotification, 
+  getNotificationStats 
+} from '../controllers/superadmin/notification.controller.js';
 
 const superadminRouter = express.Router();
 
@@ -73,6 +80,13 @@ superadminRouter.delete('/delete-coupon/:couponId/', restrictToSuperAdminOrAdmin
 
 //Notification Management
 superadminRouter.get('/dashboard/low-stock-notifications', restrictToSuperAdminOrAdmin, getLowStockNotifications);
+
+// Scheduled Notifications
+superadminRouter.post('/notifications/schedule', restrictToSuperAdminOrAdmin, createScheduledNotification);
+superadminRouter.get('/notifications/scheduled/:outletId', restrictToSuperAdminOrAdmin, getScheduledNotifications);
+superadminRouter.delete('/notifications/scheduled/:notificationId', restrictToSuperAdminOrAdmin, cancelScheduledNotification);
+superadminRouter.post('/notifications/send-immediate', restrictToSuperAdminOrAdmin, sendImmediateNotification);
+superadminRouter.get('/notifications/stats/:outletId', restrictToSuperAdminOrAdmin, getNotificationStats);
 
 //App management
 superadminRouter.get("/outlets/get-non-availability-preview/:outletId", restrictToSuperAdminOrAdmin, getOutletNonAvailabilityPreview);

@@ -27,6 +27,7 @@ model Outlet {
   coupons      Coupon[]
   availability OutletAvailability[]
   notifications Notification[]
+  scheduledNotifications ScheduledNotification[]
   appManagement OutletAppManagement[]
 }
 
@@ -44,6 +45,7 @@ model User {
   customerInfo CustomerDetails?
   staffInfo    StaffDetails?
   outlet       Outlet?          @relation("OutletUsers", fields: [outletId], references: [id], onDelete: Cascade)
+  deviceTokens UserDeviceToken[]
 }
 
 model CustomerDetails {
@@ -296,6 +298,34 @@ model Notification {
   isRead    Boolean  @default(false)
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   outlet    Outlet   @relation(fields: [outletId], references: [id], onDelete: Cascade)
+}
+
+model ScheduledNotification {
+  id          Int       @id @default(autoincrement())
+  title       String
+  message     String
+  priority    Priority
+  imageUrl    String?
+  scheduledAt DateTime
+  sentAt      DateTime?
+  isSent      Boolean   @default(false)
+  outletId    Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  outlet      Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
+}
+
+model UserDeviceToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  deviceToken String
+  platform  String   // 'ios' or 'android'
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, deviceToken])
 }
 
 model OutletAppManagement {
