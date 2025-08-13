@@ -14,16 +14,16 @@ export const createScheduledNotification = async (req, res) => {
 
     // Construct scheduledAt with IST (UTC+5:30) explicitly
     const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}+0530`);
-    console.log(scheduledAt)
-    const now = new Date(); // Current time in local system timezone (likely IST)
-    const buffer = 5 * 60 * 1000; // 5-minute buffer in milliseconds
+    console.log("Scheduled At:", scheduledAt);
 
-    // Validate that scheduled time is at least 5 minutes in the future
-    console.log(now.getTime())
-    if (scheduledAt <= new Date(now.getTime() + buffer)) {
+    const now = new Date(); // Current time in local system timezone (likely IST)
+    console.log("Now:", now.getTime());
+
+    // Validate that scheduled time is in the future
+    if (scheduledAt <= now) {
       return res.status(400).json({
         success: false,
-        message: "Scheduled time must be at least 5 minutes in the future",
+        message: "Scheduled time must be in the future",
       });
     }
 

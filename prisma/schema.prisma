@@ -47,6 +47,7 @@ model User {
   staffInfo    StaffDetails?
   outlet       Outlet?          @relation("OutletUsers", fields: [outletId], references: [id], onDelete: Cascade)
   deviceTokens UserDeviceToken[]
+  notificationDeliveries NotificationDelivery[]
 }
 
 model CustomerDetails {
@@ -315,6 +316,26 @@ model ScheduledNotification {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   outlet      Outlet    @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  deliveries  NotificationDelivery[]
+}
+
+model NotificationDelivery {
+  id                      Int                   @id @default(autoincrement())
+  scheduledNotificationId Int
+  userId                  Int
+  deviceToken             String
+  status                  NotificationStatus    @default(PENDING)
+  sentAt                  DateTime?
+  failureReason           String?
+  messageId               String?               // FCM message ID for tracking
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  scheduledNotification   ScheduledNotification @relation(fields: [scheduledNotificationId], references: [id], onDelete: Cascade)
+  user                    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([scheduledNotificationId, userId, deviceToken])
+  @@index([scheduledNotificationId, status])
+  @@index([userId, status])
 }
 
 model UserDeviceToken {
@@ -444,4 +465,11 @@ enum OutletAppFeature {
   UPI
   LIVE_COUNTER
   COUPONS
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  DELIVERED
 }
