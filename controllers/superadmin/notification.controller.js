@@ -5,21 +5,25 @@ import fcmService from "../../services/fcmService.js";
 export const createScheduledNotification = async (req, res) => {
   try {
     const { title, message, priority, imageUrl, scheduledDate, scheduledTime, outletId } = req.body;
-
     if (!title || !message || !scheduledDate || !scheduledTime || !outletId) {
       return res.status(400).json({
         success: false,
-        message: "Title, message, scheduled date, scheduled time, and outlet ID are required"
+        message: "Title, message, scheduled date, scheduled time, and outlet ID are required",
       });
     }
 
-    const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}`);
+    // Construct scheduledAt with IST (UTC+5:30) explicitly
+    const scheduledAt = new Date(`${scheduledDate}T${scheduledTime}+0530`);
+    console.log(scheduledAt)
+    const now = new Date(); // Current time in local system timezone (likely IST)
+    const buffer = 5 * 60 * 1000; // 5-minute buffer in milliseconds
 
-    // Validate that scheduled time is in the future
-    if (scheduledAt <= new Date()) {
+    // Validate that scheduled time is at least 5 minutes in the future
+    console.log(now.getTime())
+    if (scheduledAt <= new Date(now.getTime() + buffer)) {
       return res.status(400).json({
         success: false,
-        message: "Scheduled time must be in the future"
+        message: "Scheduled time must be at least 5 minutes in the future",
       });
     }
 
@@ -27,23 +31,23 @@ export const createScheduledNotification = async (req, res) => {
     const notification = await notificationScheduler.addScheduledNotification({
       title,
       message,
-      priority: priority || 'MEDIUM',
+      priority: priority || "MEDIUM",
       imageUrl,
       scheduledAt,
-      outletId: parseInt(outletId)
+      outletId: parseInt(outletId),
     });
 
     res.status(201).json({
       success: true,
       message: "Notification scheduled successfully",
-      data: notification
+      data: notification,
     });
   } catch (error) {
-    console.error('Error creating scheduled notification:', error);
+    console.error("Error creating scheduled notification:", error);
     res.status(500).json({
       success: false,
       message: "Failed to schedule notification",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -133,7 +137,7 @@ export const sendImmediateNotification = async (req, res) => {
       type: 'immediate'
     });
 
-    console.log(result)
+    console.log(results)
 
     res.status(200).json({
       success: true,

@@ -10,6 +10,14 @@ const serviceAccount = JSON.parse(
   readFileSync(path.join(__dirname, '../serviceAccountKey.json'), 'utf8')
 );
 
+// FCM data payload values MUST be strings. This helper coerces values.
+const stringifyData = (obj = {}) =>
+  Object.fromEntries(
+    Object.entries(obj)
+      .filter(([_, v]) => v !== undefined)
+      .map(([k, v]) => [k, String(v)])
+  );
+
 class FCMService {
   constructor() {
     // Initialize the Firebase Admin SDK only if it hasn't been already.
@@ -29,40 +37,40 @@ class FCMService {
    * @param {object} data - Additional data to send with the notification.
    */
   async sendPushNotification(deviceToken, title, message, data = {}) {
-    const payload = {
-      token: deviceToken,
-      notification: {
-        title: title,
-        body: message,
-      },
-      data: {
-        title: title,
-        message: message,
-        ...data,
-      },
-      android: {
-        priority: 'high',
-        notification: {
-          sound: 'default'
-        }
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: 'default',
-            badge: 1,
-          },
-        },
-      },
-    };
-
     try {
-      const response = await admin.messaging().send(payload);
-      console.log(`Notification sent successfully to device: ${deviceToken}`, response);
-      return { success: true, messageId: response };
+      const messaging = admin.messaging();
+
+      // Prefer modern send API if available
+      if (typeof messaging.send === 'function') {
+        const dataStringified = stringifyData({ title, message, ...data });
+        const payload = {
+          token: deviceToken,
+          notification: { title, body: message },
+          data: dataStringified,
+          android: { priority: 'high', notification: { sound: 'default' } },
+          apns: { payload: { aps: { sound: 'default', badge: 1 } } }
+        };
+        const response = await messaging.send(payload);
+        console.log(`Notification sent successfully to device: ${deviceToken}`, response);
+        return { success: true, messageId: response };
+      }
+
+      // Fallback to legacy sendToDevice
+      const legacyPayload = {
+        notification: { title, body: message },
+        data: stringifyData({ title, message, ...data })
+      };
+      const legacyResp = await messaging.sendToDevice(deviceToken, legacyPayload, { priority: 'high' });
+      const first = legacyResp.results?.[0];
+      if (first && first.messageId) {
+        console.log(`Notification sent successfully to device (legacy): ${deviceToken}`, first.messageId);
+        return { success: true, messageId: first.messageId };
+      }
+      console.error(`Failed to send notification to device (legacy): ${deviceToken}`, first?.error);
+      return { success: false, error: first?.error?.code || 'unknown_error' };
     } catch (error) {
       console.error(`Failed to send notification to device: ${deviceToken}`, error);
-      return { success: false, error: error.code };
+      return { success: false, error: error.code || 'unknown_error' };
     }
   }
 
@@ -78,40 +86,35 @@ class FCMService {
       throw new Error('Device tokens array is required and cannot be empty');
     }
 
-    const payload = {
-      tokens: deviceTokens,
-      notification: {
-        title: title,
-        body: message,
-      },
-      data: {
-        title: title,
-        message: message,
-        ...data
-      },
-    };
+    const messaging = admin.messaging();
+    const concurrency = 50; // limit concurrent sends to avoid throttling
+    const results = [];
 
-    try {
-      const response = await admin.messaging().sendMulticast(payload);
-      console.log(`Successfully sent notifications to ${response.successCount} of ${deviceTokens.length} devices`);
+    // Build a sender using messaging.send (works in all versions where single send works)
+    const makeMessage = (token) => ({
+      token,
+      notification: { title, body: message },
+      data: stringifyData({ title, message, ...data }),
+      android: { priority: 'high', notification: { sound: 'default' } },
+      apns: { payload: { aps: { sound: 'default', badge: 1 } } }
+    });
 
-      if (response.failureCount > 0) {
-        const failedTokens = [];
-        response.responses.forEach((resp, idx) => {
-          if (!resp.success) {
-            failedTokens.push({
-              token: deviceTokens[idx],
-              error: resp.error.code
-            });
-          }
-        });
-        console.log('List of failed tokens:', failedTokens);
-      }
-      return response.responses;
-    } catch (error) {
-      console.error('Error sending bulk push notifications:', error);
-      throw error;
+    // Process in small batches with Promise.allSettled
+    for (let i = 0; i < deviceTokens.length; i += concurrency) {
+      const batch = deviceTokens.slice(i, i + concurrency);
+      const promises = batch.map(async (token) => {
+        try {
+          const message = makeMessage(token);
+          const resp = await messaging.send(message);
+          results.push({ deviceToken: token, success: true, messageId: resp });
+        } catch (err) {
+          results.push({ deviceToken: token, success: false, error: err?.code || 'unknown_error' });
+        }
+      });
+      await Promise.allSettled(promises);
     }
+
+    return results;
   }
 
   /**
