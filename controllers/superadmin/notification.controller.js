@@ -116,6 +116,8 @@ export const sendImmediateNotification = async (req, res) => {
       }
     });
 
+    console.log(deviceTokens)
+
     if (deviceTokens.length === 0) {
       return res.status(404).json({
         success: false,
@@ -130,6 +132,8 @@ export const sendImmediateNotification = async (req, res) => {
       outletId: parseInt(outletId),
       type: 'immediate'
     });
+
+    console.log(result)
 
     res.status(200).json({
       success: true,
@@ -282,7 +286,7 @@ export const unregisterDeviceToken = async (req, res) => {
 export const testFCMService = async (req, res) => {
   try {
     const status = fcmService.getServiceStatus();
-    
+
     res.status(200).json({
       success: true,
       message: "FCM Service Status",
