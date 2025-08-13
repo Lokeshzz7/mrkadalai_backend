@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import prisma from '../prisma/client.js';
-import snsService from './snsService.js';
+import fcmService from './fcmService.js';
 
 class NotificationScheduler {
   constructor() {
@@ -104,7 +104,7 @@ class NotificationScheduler {
       const tokens = deviceTokens.map(dt => dt.deviceToken);
 
       // Send push notifications
-      await snsService.sendBulkPushNotifications(tokens, title, message, {
+      await fcmService.sendBulkPushNotifications(tokens, title, message, {
         notificationId: id,
         outletId: outletId,
         type: 'scheduled'

@@ -1,6 +1,6 @@
 import prisma from "../../prisma/client.js";
 import notificationScheduler from "../../services/notificationScheduler.js";
-import snsService from "../../services/snsService.js";
+import fcmService from "../../services/fcmService.js";
 
 export const createScheduledNotification = async (req, res) => {
   try {
@@ -126,7 +126,7 @@ export const sendImmediateNotification = async (req, res) => {
     const tokens = deviceTokens.map(dt => dt.deviceToken);
 
     // Send push notifications
-    const results = await snsService.sendBulkPushNotifications(tokens, title, message, {
+    const results = await fcmService.sendBulkPushNotifications(tokens, title, message, {
       outletId: parseInt(outletId),
       type: 'immediate'
     });
@@ -273,6 +273,58 @@ export const unregisterDeviceToken = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to unregister device token",
+      error: error.message
+    });
+  }
+};
+
+// Test FCM service status
+export const testFCMService = async (req, res) => {
+  try {
+    const status = fcmService.getServiceStatus();
+    
+    res.status(200).json({
+      success: true,
+      message: "FCM Service Status",
+      data: status
+    });
+  } catch (error) {
+    console.error('Error getting FCM service status:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to get FCM service status",
+      error: error.message
+    });
+  }
+};
+
+// Test single device notification
+export const testSingleDeviceNotification = async (req, res) => {
+  try {
+    const { deviceToken, title, message } = req.body;
+
+    if (!deviceToken || !title || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Device token, title, and message are required"
+      });
+    }
+
+    const result = await fcmService.sendPushNotification(deviceToken, title, message, {
+      type: 'test',
+      timestamp: new Date().toISOString()
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Test notification sent",
+      data: result
+    });
+  } catch (error) {
+    console.error('Error sending test notification:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to send test notification",
       error: error.message
     });
   }
