@@ -15,6 +15,7 @@ import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import staffRoutes from './routes/staffRoutes.js';
 import customerRouter from './routes/customerRoutes.js';
+import multer from "multer";
 import './services/notificationScheduler.js'; // Initialize notification scheduler
 
 app.use(cookieParser());
@@ -30,6 +31,8 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // app.use(arjectMiddleware);
 

@@ -42,6 +42,7 @@ model User {
   createdAt    DateTime         @default(now())
   phone        String?
   isVerified   Boolean          @default(false)
+  imageUrl String?
   customerInfo CustomerDetails?
   staffInfo    StaffDetails?
   outlet       Outlet?          @relation("OutletUsers", fields: [outletId], references: [id], onDelete: Cascade)
@@ -250,6 +251,7 @@ model Admin {
   password    String
   phone       String?
   isVerified  Boolean           @default(false)
+  imageUrl String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   outlets     AdminOutlet[]
