@@ -15,6 +15,7 @@ import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import staffRoutes from './routes/staffRoutes.js';
 import customerRouter from './routes/customerRoutes.js';
+import testRouter from './routes/testRoutes.js';
 import multer from "multer";
 import './services/notificationScheduler.js'; // Initialize notification scheduler
 
@@ -39,6 +40,7 @@ app.use('/api/superadmin', superAdminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/customer',customerRouter);
+app.use('/api/test', testRouter);
 app.use(errorMiddleware)
 
 app.get('/', (req, res) => {

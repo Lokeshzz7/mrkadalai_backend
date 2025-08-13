@@ -3,7 +3,7 @@ import express from "express";
 import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory,customerAppCancelOrder, createRazorpayOrder, verifyRazorpayPayment } from "../controllers/customer/order.controller.js";
 import { getAvailableDatesAndSlotsForCustomer, getProductsAndStocks } from "../controllers/customer/home.controller.js";
 import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/auth.middleware.js";
-import { rechargeWallet,recentTrans,getWalletDetails,getRechargeHistory } from "../controllers/customer/wallet.controller.js";
+import { rechargeWallet, recentTrans, getWalletDetails, getRechargeHistory, createWalletRechargeOrder, verifyWalletRecharge, getServiceChargeBreakdown } from "../controllers/customer/wallet.controller.js";
 import { getCart, updateCartItem } from "../controllers/customer/cart.controller.js";
 import { editProfile, getProfile,upload } from "../controllers/customer/profile.controller.js";
 import { 
@@ -27,10 +27,13 @@ customerRouter.get("/outlets/customer-order-history/",authenticateToken,authoriz
 customerRouter.put("/outlets/customer-cancel-order/:orderId", authenticateToken, authorizeRoles('CUSTOMER'), customerAppCancelOrder);
 
 //Wallet management
-customerRouter.post("/outlets/recharge-wallet",authenticateToken,authorizeRoles('CUSTOMER'),rechargeWallet);
-customerRouter.get("/outlets/get-recent-recharge",authenticateToken,authorizeRoles('CUSTOMER'),recentTrans);
+customerRouter.post("/outlets/create-wallet-recharge-order", authenticateToken, authorizeRoles('CUSTOMER'), createWalletRechargeOrder);
+customerRouter.post("/outlets/verify-wallet-recharge", authenticateToken, authorizeRoles('CUSTOMER'), verifyWalletRecharge);
+customerRouter.post("/outlets/recharge-wallet", authenticateToken, authorizeRoles('CUSTOMER'), rechargeWallet); // Legacy cash recharge
+customerRouter.get("/outlets/get-recent-recharge", authenticateToken, authorizeRoles('CUSTOMER'), recentTrans);
 customerRouter.get("/outlets/get-wallet-details", authenticateToken, authorizeRoles('CUSTOMER'), getWalletDetails);
 customerRouter.get("/outlets/get-recharge-history", authenticateToken, authorizeRoles('CUSTOMER'), getRechargeHistory);
+customerRouter.get("/outlets/service-charge-breakdown", authenticateToken, authorizeRoles('CUSTOMER'), getServiceChargeBreakdown);
 
 
 //Cart management

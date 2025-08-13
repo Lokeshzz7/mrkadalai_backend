@@ -184,7 +184,11 @@ model WalletTransaction {
   id        Int             @id @default(autoincrement())
   walletId  Int
   amount    Float
+  grossAmount    Float?          // Total amount paid by customer (including service charge)
+  serviceCharge     Float?          // Razorpay service charge
   method    PaymentMethod
+  razorpayPaymentId String?         // Razorpay payment ID for tracking
+  razorpayOrderId   String?         // Razorpay order ID for tracking
   createdAt DateTime        @default(now())
   status    WalletTransType
   wallet    Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
