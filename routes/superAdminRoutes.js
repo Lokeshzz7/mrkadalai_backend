@@ -31,9 +31,9 @@ superadminRouter.get('/dashboard/', authenticateToken, authorizeRoles('SUPERADMI
 });
 
 //Outlet Management
-superadminRouter.post('/add-outlet/', restrictToSuperAdminOrAdmin, addOutlets);
+superadminRouter.post('/add-outlet/', restrictToSuperAdmin, addOutlets);
 superadminRouter.get('/get-outlets/', restrictToSuperAdminOrAdmin, getOutlets);
-superadminRouter.delete('/remove-outlet/:outletId/', restrictToSuperAdminOrAdmin, removeOutlets);
+superadminRouter.delete('/remove-outlet/:outletId/', restrictToSuperAdmin, removeOutlets);
 
 //Staff Management
 superadminRouter.post('/outlets/add-staff/', restrictToSuperAdminOrAdmin, outletAddStaff);
