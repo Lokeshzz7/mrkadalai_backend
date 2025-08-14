@@ -1,6 +1,7 @@
 import prisma from "../../prisma/client.js";
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
+import { getCurrentISTAsUTC } from "../../utils/timezone.js";
 
 // export const customerAppOrder1 = async (req, res) => {
 //   try {
@@ -711,9 +712,10 @@ export const customerAppOrder = async (req, res) => {
         if (!coupon || !coupon.isActive) {
           throw new Error("Invalid or inactive coupon");
         }
-        const now = new Date(); // 02:35 PM IST, August 11, 2025
-        if (now < coupon.validFrom || now > coupon.validUntil) {
-          throw new Error("Coupon is not valid for the current date");
+        // Check coupon validity using IST timezone
+        const currentISTAsUTC = getCurrentISTAsUTC();
+        if (currentISTAsUTC < coupon.validFrom || currentISTAsUTC > coupon.validUntil) {
+          throw new Error("Coupon is not valid for the current date and time (IST)");
         }
         if (coupon.outletId !== outletId && coupon.outletId !== null) {
           throw new Error("Coupon is not valid for the selected outlet");
@@ -804,7 +806,7 @@ export const customerAppOrder = async (req, res) => {
         orderDeliveryDate = new Date();
         isPreOrder = false;
       }
-      
+
       const order = await tx.order.create({
         data: {
           customerId,
@@ -900,12 +902,12 @@ export const customerAppOrder = async (req, res) => {
       },
       walletTransaction: result.walletTransaction
         ? {
-            id: result.walletTransaction.id,
-            amount: result.walletTransaction.amount,
-            method: result.walletTransaction.method,
-            status: result.walletTransaction.status,
-            createdAt: result.walletTransaction.createdAt,
-          }
+          id: result.walletTransaction.id,
+          amount: result.walletTransaction.amount,
+          method: result.walletTransaction.method,
+          status: result.walletTransaction.status,
+          createdAt: result.walletTransaction.createdAt,
+        }
         : null,
       stockUpdates: result.stockUpdates,
       couponDiscount: result.couponDiscount,

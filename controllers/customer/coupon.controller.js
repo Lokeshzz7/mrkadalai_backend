@@ -1,14 +1,41 @@
 import prisma from "../../prisma/client.js";
-
+import { getCurrentISTAsUTC, convertUTCToIST, formatDateForIST, getTimezoneInfo } from "../../utils/timezone.js"
 export const getCoupons = async (req, res) => {
   try {
     const { outletId } = req.params;
+    
+    const currentISTAsUTC = getCurrentISTAsUTC();
+    
     const coupons = await prisma.coupon.findMany({
-      where: { outletId: parseInt(outletId), isActive: true  },
+      where: { 
+        outletId: parseInt(outletId), 
+        isActive: true,
+        validFrom: {
+          lte: currentISTAsUTC
+        },
+        validUntil: {
+          gte: currentISTAsUTC
+        }
+      },
       orderBy: { createdAt: 'desc' },
     });
-    res.status(200).json(coupons);
+    
+    const couponsWithStatus = coupons.map(coupon => ({
+      ...coupon,
+      isCurrentlyValid: true, // All returned coupons are currently valid
+      validFromIST: formatDateForIST(coupon.validFrom),
+      validUntilIST: formatDateForIST(coupon.validUntil),
+    }));
+    
+    res.status(200).json({
+      message: 'Active coupons fetched successfully',
+      coupons: couponsWithStatus,
+      currentTimeIST: formatDateForIST(currentISTAsUTC),
+      timezone: getTimezoneInfo(),
+      note: 'Only currently valid coupons are returned based on IST timezone'
+    });
   } catch (err) {
+    console.error('Error fetching coupons:', err);
     res.status(500).json({ message: 'Failed to fetch coupons', error: err.message });
   }
 };
@@ -59,9 +86,18 @@ export const applyCoupon = async (req, res) => {
       return res.status(404).json({ message: 'Invalid or inactive coupon' });
     }
 
-    const now = new Date();
-    if (now < coupon.validFrom || now > coupon.validUntil) {
-      return res.status(400).json({ message: 'Coupon is not valid for the current date' });
+    const currentISTAsUTC = getCurrentISTAsUTC();
+    if (currentISTAsUTC < coupon.validFrom || currentISTAsUTC > coupon.validUntil) {
+      const validFromIST = new Date(coupon.validFrom.getTime() + (5.5 * 60 * 60 * 1000));
+      const validUntilIST = new Date(coupon.validUntil.getTime() + (5.5 * 60 * 60 * 1000));
+      
+      return res.status(400).json({ 
+        message: 'Coupon is not valid for the current date and time',
+        currentTimeIST: currentISTAsUTC.toISOString(),
+        couponValidFrom: validFromIST.toISOString(),
+        couponValidUntil: validUntilIST.toISOString(),
+        timezone: 'IST (UTC+5:30)'
+      });
     }
 
     if (coupon.outletId !== outletId) {
