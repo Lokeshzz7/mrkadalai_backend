@@ -134,7 +134,7 @@ export const getOrder = async (req, res) => {
 
 
 export const updateOrder = async (req, res) => {
-  const { orderId, orderItemId, status, outletId } = req.body;
+  const { orderId, orderItemIds, status, outletId } = req.body;
   if (!orderId || !status || !outletId) {
     return res.status(400).json({ message: "Provide orderId, status, and outletId" });
   }
@@ -166,6 +166,7 @@ export const updateOrder = async (req, res) => {
         });
       }
       await prisma.$transaction(async (tx) => {
+        // Update order status
         await tx.order.update({
           where: { id: order.id },
           data: { 
@@ -173,6 +174,29 @@ export const updateOrder = async (req, res) => {
             deliveredAt: null // Reset deliveredAt when order is cancelled
           },
         });
+
+        // Restore stock for all items since entire order is cancelled
+        for (const item of order.items) {
+          // Update inventory - add back the quantity
+          await tx.inventory.update({
+            where: { productId: item.productId },
+            data: {
+              quantity: {
+                increment: item.quantity,
+              },
+            },
+          });
+
+          // Add stock history record
+          await tx.stockHistory.create({
+            data: {
+              productId: item.productId,
+              outletId: order.outletId,
+              quantity: item.quantity,
+              action: 'ADD', // Adding back to stock
+            },
+          });
+        }
 
         // Refund logic based on order type
         if (order.type === 'APP' && order.customerId) {
@@ -215,70 +239,149 @@ export const updateOrder = async (req, res) => {
           });
         }
       });
-      return res.status(200).json({ message: "Order cancelled" });
+      return res.status(200).json({ message: "Order cancelled and stock updated" });
     }
 
     // === DELIVERED ===
     if (status === "DELIVERED") {
-      await prisma.$transaction([
-        prisma.orderItem.updateMany({
-          where: { orderId: order.id },
-          data: { status: "DELIVERED" },
-        }),
-        prisma.order.update({
-          where: { id: order.id },
-          data: { 
-            status: "DELIVERED",
-            deliveredAt: new Date() // Set deliveredAt when order is delivered
-          },
-        }),
-      ]);
-      return res.status(200).json({ message: "All items and order marked DELIVERED" });
+        if (order.status === 'CANCELLED') {
+             return res.status(400).json({ message: "Cannot mark a cancelled order as delivered." });
+        }
+        await prisma.$transaction([
+            prisma.orderItem.updateMany({
+                where: { orderId: order.id, status: { not: "DELIVERED" } }, // Only update undelivered items
+                data: { status: "DELIVERED" },
+            }),
+            prisma.order.update({
+                where: { id: order.id },
+                data: { 
+                    status: "DELIVERED",
+                    deliveredAt: new Date() // Set deliveredAt when order is delivered
+                },
+            }),
+        ]);
+        return res.status(200).json({ message: "All items and order marked DELIVERED" });
     }
 
     // === PARTIALLY_DELIVERED ===
     if (status === "PARTIALLY_DELIVERED") {
-      const item = order.items.find(i => i.id === parseInt(orderItemId));
-      if (!item) {
-        return res.status(404).json({ message: "Order item not found in this order" });
+      if (!orderItemIds || !Array.isArray(orderItemIds) || orderItemIds.length === 0) {
+        return res.status(400).json({ message: "Provide at least one orderItemId to deliver" });
       }
+
+      await prisma.$transaction(async (tx) => {
+        const itemIdsInt = orderItemIds.map(id => parseInt(id));
+
+        // Update selected items to DELIVERED
+        await tx.orderItem.updateMany({
+          where: { id: { in: itemIdsInt } },
+          data: { status: "DELIVERED" },
+        });
+
+        // Check if all items are now delivered
+        const updatedOrder = await tx.order.findUnique({
+          where: { id: order.id },
+          include: { items: true },
+        });
+        const allItemsDelivered = updatedOrder.items.every(item => item.status === "DELIVERED" || item.status === "CANCELLED");
+
+        // Update the main order status based on the check
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: allItemsDelivered ? "DELIVERED" : "PARTIALLY_DELIVERED",
+            deliveredAt: allItemsDelivered ? new Date() : null,
+          },
+        });
+      });
       
-      // Check if all items will be delivered after this update
-      const allItemsDelivered = order.items.every(i => 
-        i.id === parseInt(orderItemId) ? true : i.status === "DELIVERED"
-      );
-      
-      // If item already delivered, just update order status
-      if (item.status === "DELIVERED") {
-        await prisma.$transaction([
-          prisma.order.update({
-            where: { id: order.id },
-            data: { 
-              status: allItemsDelivered ? "DELIVERED" : "PARTIALLY_DELIVERED",
-              deliveredAt: allItemsDelivered ? new Date() : null
-            },
-          }),
-        ]);
-        return res.status(200).json({
-          message: allItemsDelivered ? "All items delivered, order marked DELIVERED" : "Order remains PARTIALLY_DELIVERED; item was already DELIVERED",
+      const message = orderItemIds.length > 1 ? "Selected items delivered, order marked PARTIALLY_DELIVERED" : "Order marked PARTIALLY_DELIVERED; one item delivered";
+
+      return res.status(200).json({ 
+        message: message
+      });
+    }
+
+    // === PARTIAL_CANCEL (New functionality for cancelling remaining undelivered items) ===
+    if (status === "PARTIAL_CANCEL") {
+      if (order.status !== 'PARTIALLY_DELIVERED') {
+        return res.status(400).json({
+          message: `Cannot partially cancel order. Order status is ${order.status}`,
         });
       }
+
+      const undeliveredItems = order.items.filter(item => item.status === "NOT_DELIVERED");
       
-      await prisma.$transaction([
-        prisma.orderItem.update({
-          where: { id: item.id },
-          data: { status: "DELIVERED" },
-        }),
-        prisma.order.update({
+      if (undeliveredItems.length === 0) {
+        return res.status(400).json({ message: "No undelivered items to cancel" });
+      }
+
+      await prisma.$transaction(async (tx) => {
+        // Calculate refund amount for undelivered items
+        const refundAmount = undeliveredItems.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
+
+        // Update order status to DELIVERED since remaining items are being cancelled
+        await tx.order.update({
           where: { id: order.id },
           data: { 
-            status: allItemsDelivered ? "DELIVERED" : "PARTIALLY_DELIVERED",
-            deliveredAt: allItemsDelivered ? new Date() : null
+            status: "DELIVERED", // All delivered items remain, undelivered ones are cancelled
+            deliveredAt: new Date()
           },
-        }),
-      ]);
+        });
+        
+        // This part is changed. We do not update the OrderItem status to 'CANCELLED'.
+        // It remains 'NOT_DELIVERED' as requested.
+
+        // Restore stock for undelivered items and create stock history
+        for (const item of undeliveredItems) {
+          // Update inventory - add back the quantity
+          await tx.inventory.update({
+            where: { productId: item.productId },
+            data: {
+              quantity: {
+                increment: item.quantity,
+              },
+            },
+          });
+
+          // Add stock history record
+          await tx.stockHistory.create({
+            data: {
+              productId: item.productId,
+              outletId: order.outletId,
+              quantity: item.quantity,
+              action: 'ADD', // Adding back to stock
+            },
+          });
+        }
+
+        // Refund logic for undelivered items (only for APP orders)
+        if (order.type === 'APP' && order.customerId && refundAmount > 0) {
+          let wallet = await tx.wallet.findUnique({
+            where: { customerId: order.customerId },
+          });
+          await tx.wallet.update({
+            where: { customerId: order.customerId },
+            data: {
+              balance: {
+                increment: refundAmount,
+              },
+            },
+          });
+          await tx.walletTransaction.create({
+            data: {
+              walletId: wallet.id,
+              amount: refundAmount,
+              method: order.paymentMethod,
+              status: 'RECHARGE',
+              createdAt: new Date(),
+            },
+          });
+        }
+      });
+      
       return res.status(200).json({ 
-        message: allItemsDelivered ? "All items delivered, order marked DELIVERED" : "Order marked PARTIALLY_DELIVERED; one item delivered" 
+        message: `Undelivered items cancelled, stock restored, and ₹${undeliveredItems.reduce((total, item) => total + (item.unitPrice * item.quantity), 0)} refunded` 
       });
     }
 
