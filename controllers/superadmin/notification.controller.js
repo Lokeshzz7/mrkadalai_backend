@@ -203,41 +203,48 @@ export const getNotificationStats = async (req, res) => {
 export const registerDeviceToken = async (req, res) => {
   try {
     const { deviceToken, platform } = req.body;
-    const userId = req.user.id; // From auth middleware
+    const userId = req.user.id;
 
     if (!deviceToken || !platform) {
-      return res.status(400).json({
-        success: false,
-        message: "Device token and platform are required"
-      });
+      return res.status(400).json({ success: false, message: "Device token and platform are required" });
     }
 
-    // Upsert device token
-    const userDeviceToken = await prisma.userDeviceToken.upsert({
-      where: {
-        userId_deviceToken: {
-          userId,
-          deviceToken
-        }
-      },
-      update: {
-        platform,
-        isActive: true,
-        updatedAt: new Date()
-      },
-      create: {
-        userId,
-        deviceToken,
-        platform,
-        isActive: true
-      }
+    const existingToken = await prisma.userDeviceToken.findUnique({
+      where: { deviceToken }
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Device token registered successfully",
-      data: userDeviceToken
-    });
+    if (existingToken) {
+      if (existingToken.userId !== userId) {
+        const updatedToken = await prisma.userDeviceToken.update({
+          where: { deviceToken },
+          data: { userId, platform, isActive: true, updatedAt: new Date() }
+        });
+        return res.status(200).json({
+          success: true,
+          message: "Device token ownership transferred successfully",
+          data: updatedToken
+        });
+      } else {
+        const updatedToken = await prisma.userDeviceToken.update({
+          where: { deviceToken },
+          data: { platform, isActive: true, updatedAt: new Date() }
+        });
+        return res.status(200).json({
+          success: true,
+          message: "Device token updated successfully",
+          data: updatedToken
+        });
+      }
+    } else {
+      const createdToken = await prisma.userDeviceToken.create({
+        data: { userId, deviceToken, platform, isActive: true }
+      });
+      return res.status(200).json({
+        success: true,
+        message: "Device token registered successfully",
+        data: createdToken
+      });
+    }
   } catch (error) {
     console.error('Error registering device token:', error);
     res.status(500).json({
@@ -247,6 +254,7 @@ export const registerDeviceToken = async (req, res) => {
     });
   }
 };
+
 
 // Unregister device token
 export const unregisterDeviceToken = async (req, res) => {
