@@ -27,28 +27,32 @@ app.use(session({
   saveUninitialized: false,
 }));
 
+// CORS configuration - Allow all origins for development
 app.use(cors({
   origin: true,
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
 }));
-app.use(express.json());
 
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// app.use(arjectMiddleware);
+// app.use(arjectMiddleware); // Keep disabled for development
 
 app.use('/api/superadmin', superAdminRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/staff', staffRoutes);
-app.use('/api/customer',customerRouter);
-app.use('/api/test', testRouter);
-app.use(errorMiddleware)
+app.use('/api/customer', customerRouter);
+app.use('/api/test', testRouter); // Keep test routes for development
+app.use(errorMiddleware);
 
 app.get('/', (req, res) => {
-  res.send('Server is running...');
+  res.send('MrKadalai Backend Server is running...');
 });
 
 app.listen(PORT, async () => {
   console.log(`Server listening on http://localhost:${PORT}`);
+  console.log(`External access: http://51.21.198.214:${PORT}`);
   await pool;
 });
-

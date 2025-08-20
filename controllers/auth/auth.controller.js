@@ -198,6 +198,7 @@ export const staffSignup = async (req, res, next) => {
     next(error);
   }
 };
+
 export const superAdminSignIn = async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -247,12 +248,18 @@ export const superAdminSignIn = async (req, res, next) => {
       outlet: user.outlet,
     };
 
-    res.status(200).json({ message: 'SuperAdmin login successful', user: response });
+    // Return token in response body as well
+    res.status(200).json({ 
+      message: 'SuperAdmin login successful', 
+      user: response,
+      token: token 
+    });
   } catch (error) {
     console.error('SuperAdmin login error:', error);
     next(error);
   }
 };
+
 
 export const verifyAdmin = async (req, res, next) => {
   const { adminId, outletIds, permissions } = req.body;
@@ -306,7 +313,6 @@ export const verifyAdmin = async (req, res, next) => {
   }
 };
 
-// Add this after signIn or staffSignIn
 export const adminSignIn = async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -341,7 +347,7 @@ export const adminSignIn = async (req, res, next) => {
     }
 
     const token = jwt.sign(
-      { id: admin.id, email: admin.email, role: 'ADMIN' }, // No outletId since Admins can have multiple
+      { id: admin.id, email: admin.email, role: 'ADMIN' },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
@@ -357,6 +363,7 @@ export const adminSignIn = async (req, res, next) => {
       id: admin.id,
       name: admin.name,
       email: admin.email,
+      role: 'ADMIN',
       isVerified: admin.isVerified,
       outlets: admin.outlets.map(outlet => ({
         outletId: outlet.outletId,
@@ -365,7 +372,12 @@ export const adminSignIn = async (req, res, next) => {
       })),
     };
 
-    res.status(200).json({ message: 'Admin login successful', admin: response });
+    // Return token in response body as well
+    res.status(200).json({ 
+      message: 'Admin login successful', 
+      admin: response,
+      token: token 
+    });
   } catch (error) {
     console.error('Admin login error:', error);
     next(error);
@@ -490,12 +502,18 @@ export const staffSignIn = async (req, res, next) => {
       } : undefined,
     };
 
-    res.status(200).json({ message: 'Staff login successful', user: response });
+    // Return token in response body as well
+    res.status(200).json({ 
+      message: 'Staff login successful', 
+      user: response,
+      token: token 
+    });
   } catch (error) {
     console.error('Staff login error:', error);
     next(error);
   }
 };
+
 
 export const googleSignIn = async (req, res, next) => {
   try {

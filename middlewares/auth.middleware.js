@@ -10,10 +10,8 @@ export const authenticateToken = async (req, res, next) => {
     }
     
     const decoded = jwt.verify(token, JWT_SECRET);
-    console.log('Decoded token:', decoded); // Debug log
     
     if (decoded.role === 'ADMIN') {
-      console.log('Processing ADMIN token'); // Debug log
       const admin = await prisma.admin.findUnique({
         where: { id: decoded.id },
         select: {
@@ -38,9 +36,7 @@ export const authenticateToken = async (req, res, next) => {
       }
       req.admin = admin;
       req.user = { ...admin, role: 'ADMIN' }; // Attach to req.user for role-based checks
-      console.log('Admin authenticated:', req.user); // Debug log
     } else {
-      console.log('Processing USER token with role:', decoded.role); // Debug log
       const user = await prisma.user.findUnique({
         where: { id: decoded.id },
         select: {
@@ -64,12 +60,11 @@ export const authenticateToken = async (req, res, next) => {
         return res.status(403).json({ message: 'Staff not verified.' });
       }
       req.user = user;
-      console.log('User authenticated:', req.user); // Debug log
     }
     
     next();
   } catch (error) {
-    console.error('Authentication error:', error); // Debug log
+    console.error('Authentication error:', error);
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ message: 'Invalid token.' });
     }
@@ -82,16 +77,12 @@ export const authenticateToken = async (req, res, next) => {
 
 export const authorizeRoles = (...roles) => {
   return (req, res, next) => {
-    console.log('Authorizing roles:', roles); // Debug log
-    console.log('User role:', req.user?.role); // Debug log
     if (!req.user) {
       return res.status(401).json({ message: 'Authentication required.' });
     }
     if (!roles.includes(req.user.role)) {
-      console.log('Access denied. User role:', req.user.role, 'Allowed roles:', roles); // Debug log
       return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
     }
-    console.log('Authorization successful for role:', req.user.role); // Debug log
     next();
   };
 };
