@@ -6,6 +6,15 @@ import { getStocks,addStock,deductStock,stockHistory } from '../controllers/staf
 import { getRechargeHistory,addRecharge } from '../controllers/staff/wallet.controller.js';
 import { OutletCurrentOrder } from '../controllers/staff/notification.controller.js';
 import { getAvailableDatesAndSlotsForStaff, getOrderHistory } from '../controllers/staff/orderHistory.controller.js';
+import { 
+    getSalesTrend,
+    getOrderTypeBreakdown, 
+    getNewCustomersTrend,
+    getCategoryBreakdown,
+    getDeliveryTimeOrders,
+    getCancellationRefunds,
+    getQuantitySold
+} from '../controllers/staff/reports.controller.js';
 
 const staffRouter = express.Router();
 
@@ -39,5 +48,15 @@ staffRouter.post('/outlets/recharge-wallet/',authenticateToken,authorizeRoles('S
 //Order management
 staffRouter.get('/outlets/get-order-history/',authenticateToken,authorizeRoles('STAFF'),getOrderHistory);
 staffRouter.get('/outlets/get-orderdates/:outletId/',authenticateToken,authorizeRoles('STAFF'),getAvailableDatesAndSlotsForStaff);
+
+// Reports Management
+staffRouter.post('/outlets/sales-trend/:outletId/', authenticateToken, authorizeRoles('STAFF'), getSalesTrend);
+staffRouter.post('/outlets/order-type-breakdown/:outletId/', authenticateToken, authorizeRoles('STAFF'), getOrderTypeBreakdown);
+staffRouter.post('/outlets/new-customers-trend/:outletId/', authenticateToken, authorizeRoles('STAFF'), getNewCustomersTrend);
+staffRouter.post('/outlets/category-breakdown/:outletId/', authenticateToken, authorizeRoles('STAFF'), getCategoryBreakdown);
+staffRouter.post('/outlets/delivery-time-orders/:outletId/', authenticateToken, authorizeRoles('STAFF'), getDeliveryTimeOrders);
+staffRouter.post('/outlets/cancellation-refunds/:outletId/', authenticateToken, authorizeRoles('STAFF'), getCancellationRefunds);
+staffRouter.post('/outlets/quantity-sold/:outletId/', authenticateToken, authorizeRoles('STAFF'), getQuantitySold);
+
 
 export default staffRouter;
