@@ -3,6 +3,7 @@ import { getCurrentISTAsUTC, convertUTCToIST, formatDateForIST, getTimezoneInfo 
 export const getCoupons = async (req, res) => {
   try {
     const { outletId } = req.params;
+    const userId = req.user.id; // Get current customer's user ID
     
     const currentISTAsUTC = getCurrentISTAsUTC();
     
@@ -17,22 +18,46 @@ export const getCoupons = async (req, res) => {
           gte: currentISTAsUTC
         }
       },
+      include: {
+        usages: {
+          where: {
+            userId: userId
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' },
     });
     
-    const couponsWithStatus = coupons.map(coupon => ({
-      ...coupon,
+    const unusedCoupons = coupons.filter(coupon => coupon.usages.length === 0);
+    
+    const couponsWithStatus = unusedCoupons.map(coupon => ({
+      id: coupon.id,
+      code: coupon.code,
+      description: coupon.description,
+      rewardValue: coupon.rewardValue,
+      minOrderValue: coupon.minOrderValue,
+      validFrom: coupon.validFrom,
+      validUntil: coupon.validUntil,
+      isActive: coupon.isActive,
+      usageLimit: coupon.usageLimit,
+      usedCount: coupon.usedCount,
+      usageType: coupon.usageType,
+      outletId: coupon.outletId,
+      createdAt: coupon.createdAt,
       isCurrentlyValid: true, // All returned coupons are currently valid
       validFromIST: formatDateForIST(coupon.validFrom),
       validUntilIST: formatDateForIST(coupon.validUntil),
+      isUsedByCustomer: false, // These are all unused by customer
+      remainingUses: coupon.usageLimit - coupon.usedCount
     }));
     
     res.status(200).json({
-      message: 'Active coupons fetched successfully',
+      message: 'Available coupons fetched successfully',
       coupons: couponsWithStatus,
+      totalAvailable: couponsWithStatus.length,
       currentTimeIST: formatDateForIST(currentISTAsUTC),
       timezone: getTimezoneInfo(),
-      note: 'Only currently valid coupons are returned based on IST timezone'
+      note: 'Only unused coupons by this customer are returned'
     });
   } catch (err) {
     console.error('Error fetching coupons:', err);
