@@ -6,6 +6,8 @@ import { getStocks,addStock,deductStock,stockHistory } from '../controllers/staf
 import { getRechargeHistory,addRecharge } from '../controllers/staff/wallet.controller.js';
 import { OutletCurrentOrder } from '../controllers/staff/notification.controller.js';
 import { getAvailableDatesAndSlotsForStaff, getOrderHistory } from '../controllers/staff/orderHistory.controller.js';
+import { getStaffProfile, updateStaffProfile, uploadStaffImage, deleteStaffImage, upload } from '../controllers/staff/profile.controller.js';
+import { changePassword, generate2FASetup, enable2FA, disable2FA, get2FAStatus, verify2FAToken, getBackupCodesCount } from '../controllers/staff/security.controller.js';
 import { 
     getSalesTrend,
     getOrderTypeBreakdown, 
@@ -58,5 +60,19 @@ staffRouter.post('/outlets/delivery-time-orders/:outletId/', authenticateToken, 
 staffRouter.post('/outlets/cancellation-refunds/:outletId/', authenticateToken, authorizeRoles('STAFF'), getCancellationRefunds);
 staffRouter.post('/outlets/quantity-sold/:outletId/', authenticateToken, authorizeRoles('STAFF'), getQuantitySold);
 
+//Profile Management
+staffRouter.get('/profile/', authenticateToken, authorizeRoles('STAFF'), getStaffProfile);
+staffRouter.put('/profile/', authenticateToken, authorizeRoles('STAFF'), upload, updateStaffProfile);
+staffRouter.post('/profile/upload-image/', authenticateToken, authorizeRoles('STAFF'), upload, uploadStaffImage);
+staffRouter.delete('/profile/delete-image/', authenticateToken, authorizeRoles('STAFF'), deleteStaffImage);
+
+//Security Management
+staffRouter.post('/security/change-password/', authenticateToken, authorizeRoles('STAFF'), changePassword);
+staffRouter.get('/security/2fa-status/', authenticateToken, authorizeRoles('STAFF'), get2FAStatus);
+staffRouter.post('/security/generate-2fa/', authenticateToken, authorizeRoles('STAFF'), generate2FASetup);
+staffRouter.post('/security/enable-2fa/', authenticateToken, authorizeRoles('STAFF'), enable2FA);
+staffRouter.post('/security/disable-2fa/', authenticateToken, authorizeRoles('STAFF'), disable2FA);
+staffRouter.get('/security/backup-codes-count/', authenticateToken, authorizeRoles('STAFF'), getBackupCodesCount);
+staffRouter.post('/security/verify-2fa/', verify2FAToken); // No auth needed for login verification
 
 export default staffRouter;

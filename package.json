@@ -5,7 +5,7 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start":"node app.js",
+    "start": "node app.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon app.js"
   },
@@ -35,7 +35,9 @@
     "nodemon": "^3.1.10",
     "pg": "^8.16.0",
     "pg-pool": "^3.10.0",
-    "razorpay": "^2.9.6"
+    "qrcode": "^1.5.4",
+    "razorpay": "^2.9.6",
+    "speakeasy": "^2.0.0"
   },
   "devDependencies": {
     "@prisma/client": "^6.9.0",

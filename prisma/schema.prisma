@@ -65,11 +65,15 @@ model CustomerDetails {
 }
 
 model StaffDetails {
-  id          Int               @id @default(autoincrement())
-  userId      Int               @unique
-  staffRole   String            @default("Staff")
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  permissions StaffPermission[]
+  id                    Int               @id @default(autoincrement())
+  userId                Int               @unique
+  staffRole             String            @default("Staff")
+  twoFactorSecret       String?           // TOTP secret key (Base32 encoded)
+  twoFactorEnabled      Boolean           @default(false) // Whether 2FA is enabled
+  twoFactorBackupCodes  Json?             // Array of backup recovery codes
+  twoFactorEnabledAt    DateTime?         // When 2FA was enabled
+  user                  User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permissions           StaffPermission[]
 }
 
 model StaffPermission {

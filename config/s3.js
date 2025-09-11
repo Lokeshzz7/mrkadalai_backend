@@ -22,3 +22,24 @@ export const uploadImage = async (fileBuffer, fileName) => {
   const data = await s3.upload(params).promise();
   return data.Location; // Public URL of the uploaded image
 };
+
+export const deleteImage = async (imageUrl) => {
+  if (!imageUrl) return;
+  
+  try {
+    // Extract the key from the S3 URL
+    const url = new URL(imageUrl);
+    const key = url.pathname.substring(1); // Remove leading slash
+    
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME,
+      Key: key,
+    };
+
+    await s3.deleteObject(params).promise();
+    console.log(`Successfully deleted image: ${key}`);
+  } catch (error) {
+    console.error(`Error deleting image from S3: ${error.message}`);
+    // Don't throw error to prevent blocking the main operation
+  }
+};
