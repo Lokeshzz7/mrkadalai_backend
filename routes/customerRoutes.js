@@ -63,7 +63,5 @@ customerRouter.post("/outlets/verify-razorpay-payment", authenticateToken, autho
 customerRouter.post("/notifications/register-device", authenticateToken, authorizeRoles('CUSTOMER'), registerDeviceToken);
 customerRouter.post("/notifications/unregister-device", authenticateToken, authorizeRoles('CUSTOMER'), unregisterDeviceToken);
 
-//APP-MANAGEMENT
-customerRouter.get("/outlets/app-features/:outletId",authenticateToken, authorizeRoles('CUSTOMER') , getOutletAppFeatures);
 
 export default customerRouter;

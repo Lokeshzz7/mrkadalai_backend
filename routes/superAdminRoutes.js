@@ -8,7 +8,7 @@ import { getExpenses,addExpense,getExpenseByDate } from '../controllers/superadm
 import { getCustomersWithWallet,getRechargeHistoryByOutlet,getOrdersPaidViaWallet } from '../controllers/superadmin/wallet.controller.js';
 import { getOutletCustomers } from '../controllers/superadmin/customer.controller.js';
 import { getTickets,ticketClose } from '../controllers/superadmin/ticket.controller.js';
-import { authenticateToken,authorizeRoles,restrictToSuperAdmin, restrictToSuperAdminOrAdmin } from '../middlewares/auth.middleware.js';
+import { authenticateToken,authorizeRoles,restrictToSuperAdmin, restrictToSuperAdminOrAdmin, restrictToSuperAdminOrAdminOrCustomer } from '../middlewares/auth.middleware.js';
 import { getOutletSalesReport,getOutletRevenueByItems,getRevenueSplit,getWalletRechargeByDay,getProfitLossTrends,getCustomerOverview,getCustomerPerOrder} from '../controllers/superadmin/reports.controller.js';
 import { getDashboardOverview, getOrderSourceDistribution, getOrderStatusDistribution, getPeakTimeSlots, getRevenueTrend, getTopSellingItems, getPendingAdminVerifications, verifyAdmin, mapOutletsToAdmin, assignAdminPermissions,getVerifiedAdmins,verifyStaff,getUnverifiedStaff, getVerifiedStaff, getAdminDetails, deleteAdmin } from '../controllers/superadmin/dashboard.controller.js'
 import { createCoupon, getCoupons, deleteCoupon } from '../controllers/superadmin/coupon.controller.js';
@@ -100,7 +100,7 @@ superadminRouter.post("/outlets/set-availability/", restrictToSuperAdminOrAdmin,
 superadminRouter.get("/outlets/get-available-dates/:outletId", restrictToSuperAdminOrAdmin, getAvailableDatesAndSlots);
 
 //Outlet App Feature Management
-superadminRouter.get("/outlets/app-features/:outletId", restrictToSuperAdminOrAdmin, getOutletAppFeatures);
+superadminRouter.get("/outlets/app-features/:outletId", restrictToSuperAdminOrAdminOrCustomer, getOutletAppFeatures);
 superadminRouter.post("/outlets/app-features/", restrictToSuperAdminOrAdmin, updateOutletAppFeatures);
 
 //Reports Management

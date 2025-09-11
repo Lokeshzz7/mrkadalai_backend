@@ -101,6 +101,13 @@ export const restrictToSuperAdminOrAdmin = (req, res, next) => {
   });
 };
 
+export const restrictToSuperAdminOrAdminOrCustomer = (req, res, next) => {
+  authenticateToken(req, res, (err) => {
+    if (err) return next(err);
+    authorizeRoles('SUPERADMIN', 'ADMIN','CUSTOMER')(req, res, next);
+  });
+};
+
 export const restrictToStaff = (req, res, next) => {
   authenticateToken(req, res, (err) => {
     if (err) return next(err);
