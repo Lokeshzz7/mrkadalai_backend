@@ -3,7 +3,18 @@ import prisma from "../../prisma/client.js";
 export const recentOrders = async (req, res) => {
   try {
     const { outletId } = req.params;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
+    // First, get the total count of orders for pagination info
+    const totalOrders = await prisma.order.count({
+      where: {
+        outletId: Number(outletId),
+      },
+    });
+
+    // Then, fetch the orders for the current page
     const orders = await prisma.order.findMany({
       where: {
         outletId: Number(outletId),
@@ -11,6 +22,8 @@ export const recentOrders = async (req, res) => {
       orderBy: {
         createdAt: 'desc',
       },
+      skip: skip,
+      take: limit,
       include: {
         customer: {
           include: {
@@ -51,10 +64,37 @@ export const recentOrders = async (req, res) => {
     res.status(200).json({
       message: "Recent orders fetched successfully",
       orders: formatted,
+      total: totalOrders,
+      currentPage: page,
+      totalPages: Math.ceil(totalOrders / limit),
     });
 
   } catch (error) {
     console.error("Error fetching recent orders:", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+export const getTicketsCount = async (req, res) => {
+  try {
+    const outletId = parseInt(req.user.outletId);
+    
+    const ticketCount = await prisma.ticket.count({
+      where: {
+        customer: {
+          user: {
+            outletId: outletId
+          }
+        }
+      }
+    });
+
+    res.status(200).json({
+      count: ticketCount,
+      message: "Ticket count fetched successfully"
+    });
+
+  } catch (error) {
+    console.error("Error fetching ticket count:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
