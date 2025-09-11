@@ -13,6 +13,7 @@ import {
 } from "../controllers/customer/ticket.controller.js";
 import { applyCoupon, getCoupons } from "../controllers/customer/coupon.controller.js";
 import { registerDeviceToken, unregisterDeviceToken } from "../controllers/superadmin/notification.controller.js";
+import { getOutletAppFeatures } from "../controllers/superadmin/appmanagement.controller.js";
 
 const customerRouter = express.Router();
 
@@ -61,5 +62,8 @@ customerRouter.post("/outlets/verify-razorpay-payment", authenticateToken, autho
 // Push Notification Device Token Management
 customerRouter.post("/notifications/register-device", authenticateToken, authorizeRoles('CUSTOMER'), registerDeviceToken);
 customerRouter.post("/notifications/unregister-device", authenticateToken, authorizeRoles('CUSTOMER'), unregisterDeviceToken);
+
+//APP-MANAGEMENT
+customerRouter.get("/outlets/app-features/:outletId",authenticateToken, authorizeRoles('CUSTOMER') , getOutletAppFeatures);
 
 export default customerRouter;
