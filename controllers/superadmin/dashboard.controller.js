@@ -98,12 +98,16 @@ export const getOrderStatusDistribution = async (req, res, next) => {
   }
 
   try {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    toDate.setHours(23, 59, 59, 999);  // Ensure full coverage of the 'to' day
+
     const statusCounts = await prisma.order.groupBy({
       by: ['status'],
       where: {
         createdAt: {
-          gte: new Date(from),
-          lte: new Date(to)
+          gte: fromDate,
+          lte: toDate
         }
       },
       _count: { id: true }
@@ -138,6 +142,8 @@ export const getOrderStatusDistribution = async (req, res, next) => {
     res.status(500).json({ message: "Failed to fetch order status distribution", error: err.message });
   }
 };
+
+
 
 export const getOrderSourceDistribution = async (req, res, next) => {
   const { from, to } = req.body;
@@ -302,7 +308,7 @@ export const getPendingAdminVerifications = async (req, res, next) => {
         id: true,
         email: true,
         name: true,
-        phone:true,
+        phone: true,
         createdAt: true
       }
     });
@@ -414,7 +420,7 @@ export const getVerifiedAdmins = async (req, res, next) => {
         name: true,
         phone: true,
         createdAt: true,
-        outlets: { 
+        outlets: {
           select: {
             outletId: true
           }
@@ -569,116 +575,116 @@ export const mapOutletsToAdmin = async (req, res, next) => {
 };
 
 export const assignAdminPermissions = async (req, res, next) => {
-    const { adminId, permissions } = req.body;
+  const { adminId, permissions } = req.body;
 
-console.log('Received adminId:', adminId);
-console.log('Received permissions:', JSON.stringify(permissions, null, 2));
+  console.log('Received adminId:', adminId);
+  console.log('Received permissions:', JSON.stringify(permissions, null, 2));
 
-if (!adminId || !permissions || typeof permissions !== 'object' || Object.keys(permissions).length === 0) {
-return res.status(400).json({ message: "adminId and a non-empty permissions object are required" });
-}
-
-try {
-const admin = await prisma.admin.findUnique({
-  where: { id: Number(adminId) },
-  include: { outlets: true },
-});
-
-if (!admin || !admin.isVerified) {
-  return res.status(404).json({ message: "Admin not found or not verified" });
-}
-
-const adminOutletIds = admin.outlets.map(outlet => outlet.outletId);
-const requestedOutletIds = Object.keys(permissions).map(id => Number(id));
-
-const invalidOutlets = requestedOutletIds.filter(id => !adminOutletIds.includes(id));
-if (invalidOutlets.length > 0) {
-  return res.status(400).json({ message: `Outlets ${invalidOutlets.join(', ')} are not mapped to this admin` });
-}
-
-// Process permissions for each outlet separately to avoid transaction timeouts
-for (const [outletId, perms] of Object.entries(permissions)) {
-  const numOutletId = Number(outletId);
-  
-  // Find the AdminOutlet record
-  const adminOutlet = await prisma.adminOutlet.findUnique({
-    where: { 
-      adminId_outletId: { 
-        adminId: Number(adminId), 
-        outletId: numOutletId 
-      } 
-    },
-  });
-
-  if (!adminOutlet) {
-    return res.status(400).json({ message: `Outlet ${outletId} is not mapped to this admin` });
+  if (!adminId || !permissions || typeof permissions !== 'object' || Object.keys(permissions).length === 0) {
+    return res.status(400).json({ message: "adminId and a non-empty permissions object are required" });
   }
 
-  console.log(`Processing ${perms.length} permissions for outlet ${outletId} (adminOutletId: ${adminOutlet.id})`);
+  try {
+    const admin = await prisma.admin.findUnique({
+      where: { id: Number(adminId) },
+      include: { outlets: true },
+    });
 
-  // Get all existing permissions for this outlet
-  const existingPermissions = await prisma.adminPermission.findMany({
-    where: {
-      adminOutletId: adminOutlet.id,
-    },
-  });
-
-  // Create a map for quick lookup
-  const existingPermMap = {};
-  existingPermissions.forEach(perm => {
-    existingPermMap[perm.type] = perm;
-  });
-
-  // Process each permission
-  for (const perm of perms) {
-    if (!perm.type) {
-      console.error('Permission missing type:', perm);
-      continue;
+    if (!admin || !admin.isVerified) {
+      return res.status(404).json({ message: "Admin not found or not verified" });
     }
 
-    try {
-      const existingPerm = existingPermMap[perm.type];
-      
-      if (existingPerm) {
-        // Update existing permission if the value is different
-        if (existingPerm.isGranted !== Boolean(perm.isGranted)) {
-          await prisma.adminPermission.update({
-            where: { id: existingPerm.id },
-            data: { isGranted: Boolean(perm.isGranted) },
-          });
-          console.log(`Updated permission: ${perm.type} = ${Boolean(perm.isGranted)}`);
-        } else {
-          console.log(`Permission ${perm.type} already has correct value: ${Boolean(perm.isGranted)}`);
-        }
-      } else {
-        // Create new permission
-        await prisma.adminPermission.create({
-      data: {
-          adminOutletId: adminOutlet.id,
-          type: perm.type,
-          isGranted: Boolean(perm.isGranted),
+    const adminOutletIds = admin.outlets.map(outlet => outlet.outletId);
+    const requestedOutletIds = Object.keys(permissions).map(id => Number(id));
+
+    const invalidOutlets = requestedOutletIds.filter(id => !adminOutletIds.includes(id));
+    if (invalidOutlets.length > 0) {
+      return res.status(400).json({ message: `Outlets ${invalidOutlets.join(', ')} are not mapped to this admin` });
+    }
+
+    // Process permissions for each outlet separately to avoid transaction timeouts
+    for (const [outletId, perms] of Object.entries(permissions)) {
+      const numOutletId = Number(outletId);
+
+      // Find the AdminOutlet record
+      const adminOutlet = await prisma.adminOutlet.findUnique({
+        where: {
+          adminId_outletId: {
+            adminId: Number(adminId),
+            outletId: numOutletId
+          }
         },
       });
-        console.log(`Created permission: ${perm.type} = ${Boolean(perm.isGranted)}`);
+
+      if (!adminOutlet) {
+        return res.status(400).json({ message: `Outlet ${outletId} is not mapped to this admin` });
       }
-    } catch (permError) {
-      console.error('Error processing permission:', perm, permError);
-      continue;
+
+      console.log(`Processing ${perms.length} permissions for outlet ${outletId} (adminOutletId: ${adminOutlet.id})`);
+
+      // Get all existing permissions for this outlet
+      const existingPermissions = await prisma.adminPermission.findMany({
+        where: {
+          adminOutletId: adminOutlet.id,
+        },
+      });
+
+      // Create a map for quick lookup
+      const existingPermMap = {};
+      existingPermissions.forEach(perm => {
+        existingPermMap[perm.type] = perm;
+      });
+
+      // Process each permission
+      for (const perm of perms) {
+        if (!perm.type) {
+          console.error('Permission missing type:', perm);
+          continue;
+        }
+
+        try {
+          const existingPerm = existingPermMap[perm.type];
+
+          if (existingPerm) {
+            // Update existing permission if the value is different
+            if (existingPerm.isGranted !== Boolean(perm.isGranted)) {
+              await prisma.adminPermission.update({
+                where: { id: existingPerm.id },
+                data: { isGranted: Boolean(perm.isGranted) },
+              });
+              console.log(`Updated permission: ${perm.type} = ${Boolean(perm.isGranted)}`);
+            } else {
+              console.log(`Permission ${perm.type} already has correct value: ${Boolean(perm.isGranted)}`);
+            }
+          } else {
+            // Create new permission
+            await prisma.adminPermission.create({
+              data: {
+                adminOutletId: adminOutlet.id,
+                type: perm.type,
+                isGranted: Boolean(perm.isGranted),
+              },
+            });
+            console.log(`Created permission: ${perm.type} = ${Boolean(perm.isGranted)}`);
+          }
+        } catch (permError) {
+          console.error('Error processing permission:', perm, permError);
+          continue;
+        }
+      }
     }
-  }
-}
 
     const updatedPermissions = {};
     for (const outletId of requestedOutletIds) {
       const adminOutlet = await prisma.adminOutlet.findUnique({
-        where: { 
-          adminId_outletId: { 
-            adminId: Number(adminId), 
-            outletId 
-          } 
+        where: {
+          adminId_outletId: {
+            adminId: Number(adminId),
+            outletId
+          }
         },
       });
-      
+
       if (adminOutlet) {
         const perms = await prisma.adminPermission.findMany({
           where: { adminOutletId: adminOutlet.id },
@@ -692,7 +698,7 @@ for (const [outletId, perms] of Object.entries(permissions)) {
     }
 
     console.log('Successfully updated all permissions');
-    
+
     res.status(200).json({
       message: "Permissions assigned successfully",
       adminId,
