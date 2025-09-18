@@ -979,6 +979,7 @@ export const customerAppOngoingOrderList = async (req, res) => {
                 name: true,
                 description: true,
                 price: true,
+                imageUrl: true
               },
             },
           },
@@ -1038,6 +1039,7 @@ export const customerAppOrderHistory = async (req, res) => {
                 name: true,
                 description: true,
                 price: true,
+                imageUrl: true
               },
             },
           },
