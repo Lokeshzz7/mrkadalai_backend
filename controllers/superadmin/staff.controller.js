@@ -1,5 +1,19 @@
 import bcrypt from 'bcryptjs';
 import prisma from "../../prisma/client.js";
+import multer from "multer";
+import { uploadImage, deleteImage } from "../../config/s3.js";
+
+const storage = multer.memoryStorage();
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+        if (!file.mimetype.startsWith("image/")) {
+            return cb(new Error("Only image files are allowed"), false);
+        }
+        cb(null, true);
+    },
+}).single("image");
 
 
 export const outletAddStaff = async (req, res, next) => {
@@ -122,7 +136,8 @@ export const getOutletStaff = async (req, res, next) => {
             role: true,
             outletId: true,
             name : true,
-            phone : true
+            phone : true,
+            imageUrl: true
           },
         },
         permissions: true
@@ -137,52 +152,66 @@ export const getOutletStaff = async (req, res, next) => {
 }
 
 export const outletUpdateStaff = async (req, res, next) => {
-  try {
-    const staffId = parseInt(req.params.staffId);
-    const { name, email, phone, staffRole } = req.body;
+    upload(req, res, async (err) => {
+        if (err) {
+            return res.status(400).json({ message: "Image upload failed", error: err.message });
+        }
+        try {
+            const staffId = parseInt(req.params.staffId);
+            const { name, email, phone, staffRole } = req.body;
 
-    if (!staffId) {
-      return res.status(400).json({ message: 'Invalid staff ID' });
-    }
+            if (!staffId) {
+                return res.status(400).json({ message: 'Invalid staff ID' });
+            }
 
-    
-    const staffDetails = await prisma.staffDetails.findUnique({
-      where: { id: staffId },
-      include: { user: true }
+            const staffDetails = await prisma.staffDetails.findUnique({
+                where: { id: staffId },
+                include: { user: true }
+            });
+
+            if (!staffDetails) {
+                return res.status(404).json({ message: 'Staff member not found' });
+            }
+
+            let imageUrl = staffDetails.user.imageUrl;
+
+            if (req.file) {
+                if (staffDetails.user.imageUrl) {
+                    await deleteImage(staffDetails.user.imageUrl);
+                }
+                imageUrl = await uploadImage(req.file.buffer, req.file.originalname);
+            }
+
+            const updatedUser = await prisma.user.update({
+                where: { id: staffDetails.user.id },
+                data: {
+                    name: name || staffDetails.user.name,
+                    email: email || staffDetails.user.email,
+                    phone: phone || staffDetails.user.phone,
+                    imageUrl: imageUrl
+                }
+            });
+
+            let updatedStaff = staffDetails;
+            if (staffRole) {
+                updatedStaff = await prisma.staffDetails.update({
+                    where: { id: staffId },
+                    data: { staffRole }
+                });
+            }
+
+            res.status(200).json({
+                message: 'Staff updated successfully',
+                staff: {
+                    ...updatedStaff,
+                    user: updatedUser
+                }
+            });
+        } catch (error) {
+            console.error('Error updating staff:', error);
+            res.status(500).json({ message: 'Internal server error' });
+        }
     });
-
-    if (!staffDetails) {
-      return res.status(404).json({ message: 'Staff member not found' });
-    }
-
-    const updatedUser = await prisma.user.update({
-      where: { id: staffDetails.user.id },
-      data: {
-        name: name || staffDetails.user.name,
-        email: email || staffDetails.user.email,
-        phone: phone || staffDetails.user.phone,
-      }
-    });
-
-    let updatedStaff = staffDetails;
-    if (staffRole) {
-      updatedStaff = await prisma.staffDetails.update({
-        where: { id: staffId },
-        data: { staffRole }
-      });
-    }
-
-    res.status(200).json({ 
-      message: 'Staff updated successfully',
-      staff: {
-        ...updatedStaff,
-        user: updatedUser
-      }
-    });
-  } catch (error) {
-    console.error('Error updating staff:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
 };
 
 export const outletDeleteStaff = async (req, res, next) => {
@@ -226,37 +255,38 @@ export const outletDeleteStaff = async (req, res, next) => {
 };
 
 export const getStaffById = async (req, res, next) => {
-  try {
-    const staffId = parseInt(req.params.staffId);
+    try {
+        const staffId = parseInt(req.params.staffId);
 
-    if (!staffId) {
-      return res.status(400).json({ message: 'Invalid staff ID' });
+        if (!staffId) {
+            return res.status(400).json({ message: 'Invalid staff ID' });
+        }
+
+        const staff = await prisma.staffDetails.findUnique({
+            where: { id: staffId },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        phone: true,
+                        role: true,
+                        outletId: true,
+                        imageUrl: true, // Ensure imageUrl is selected
+                    }
+                },
+                permissions: true
+            }
+        });
+
+        if (!staff) {
+            return res.status(404).json({ message: 'Staff member not found' });
+        }
+
+        res.status(200).json({ staff });
+    } catch (error) {
+        console.error('Error fetching staff details:', error);
+        res.status(500).json({ message: 'Internal server error' });
     }
-
-    const staff = await prisma.staffDetails.findUnique({
-      where: { id: staffId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            phone: true,
-            role: true,
-            outletId: true
-          }
-        },
-        permissions: true
-      }
-    });
-
-    if (!staff) {
-      return res.status(404).json({ message: 'Staff member not found' });
-    }
-
-    res.status(200).json({ staff });
-  } catch (error) {
-    console.error('Error fetching staff details:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
 };
