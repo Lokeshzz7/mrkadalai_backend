@@ -59,6 +59,8 @@ export const recentOrders = async (req, res) => {
       })),
       totalAmount : order.totalAmount,
       createdAt: order.createdAt,
+      deliveryDate: order.deliveryDate, 
+      deliverySlot: order.deliverySlot, 
     }));
 
     res.status(200).json({

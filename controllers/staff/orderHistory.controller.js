@@ -28,7 +28,7 @@ export const getOrderHistory = async (req, res) => {
         customer: {
           include: {
             user: {
-              select: { name: true },
+              select: { name: true , phone:true },
             },
           },
         },
@@ -45,12 +45,18 @@ export const getOrderHistory = async (req, res) => {
     const formattedOrders = orders.map((order) => ({
       orderId: order.id,
       customerName: order.customer?.user?.name || 'Walk-In',
+      customerPhone: order.customer?.user?.phone || 'N/A',
       orderType: order.type,
       createdAt: order.createdAt,
       status: order.status,
+      totalAmount: order.totalAmount,
+      deliveryDate: order.deliveryDate,
+      deliverySlot: order.deliverySlot,
+      paymentMethod: order.paymentMethod,
       items: order.items.map((item) => ({
-        name: item.product.name,
-        quantity: item.quantity,
+          name: item.product.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
       })),
     }));
 
