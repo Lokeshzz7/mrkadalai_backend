@@ -12,6 +12,7 @@ export const outletTotalOrders = async (req, res, next) => {
           include: {
             user: {
               select: {
+                name: true,
                 email: true,
                 createdAt: true,
                 phone: true 
@@ -41,8 +42,10 @@ export const outletTotalOrders = async (req, res, next) => {
       totalAmount: order.totalAmount,
       paymentMethod: order.paymentMethod,
       status: order.status,
-      customerName: order.customer?.user?.email || 'N/A',
+      customerName: order.customer?.user?.name || 'WalkIn',
       customerPhone: order.customer?.user?.phone || 'N/A',
+      deliveryDate: order.deliveryDate,
+      deliverySlot: order.deliverySlot,
       type : order.type,
       items: order.items.map(item => ({
         productName: item.product.name,
