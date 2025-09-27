@@ -146,7 +146,7 @@ export const applyCoupon = async (req, res) => {
 
     let discount = 0;
     if (coupon.rewardValue > 0) {
-      if (coupon.rewardValue < 1) {
+      if (coupon.rewardValue <= 1) {
         discount = currentTotal * coupon.rewardValue; 
       } else if (coupon.rewardValue <= currentTotal) {
         discount = coupon.rewardValue;
