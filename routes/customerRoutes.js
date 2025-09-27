@@ -1,7 +1,7 @@
 
 import express from "express";
 import { customerAppOngoingOrderList,customerAppOrder,customerAppOrderHistory,customerAppCancelOrder, createRazorpayOrder, verifyRazorpayPayment } from "../controllers/customer/order.controller.js";
-import { getAvailableDatesAndSlotsForCustomer, getProductsAndStocks } from "../controllers/customer/home.controller.js";
+import { getAvailableDatesAndSlotsForCustomer, getProductsAndStocks,getOutlets } from "../controllers/customer/home.controller.js";
 import { authenticate, authenticateToken, authorizeRoles } from "../middlewares/auth.middleware.js";
 import { rechargeWallet, recentTrans, getWalletDetails, getRechargeHistory, createWalletRechargeOrder, verifyWalletRecharge, getServiceChargeBreakdown } from "../controllers/customer/wallet.controller.js";
 import { getCart, updateCartItem } from "../controllers/customer/cart.controller.js";
@@ -62,6 +62,8 @@ customerRouter.post("/outlets/verify-razorpay-payment", authenticateToken, autho
 // Push Notification Device Token Management
 customerRouter.post("/notifications/register-device", authenticateToken, authorizeRoles('CUSTOMER'), registerDeviceToken);
 customerRouter.post("/notifications/unregister-device", authenticateToken, authorizeRoles('CUSTOMER'), unregisterDeviceToken);
+
+customerRouter.get('/get-outlets/',  authenticateToken, authorizeRoles('CUSTOMER'), getOutlets);
 
 
 export default customerRouter;

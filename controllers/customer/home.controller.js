@@ -79,3 +79,13 @@ export const getAvailableDatesAndSlotsForCustomer = async (req, res) => {
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
+export const getOutlets = async (req, res) => {
+  try {
+    const outlets = await prisma.outlet.findMany();
+    res.status(200).json({ outlets });
+  } catch (error) {
+    console.error("Error fetching outlets:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
