@@ -68,6 +68,8 @@ model StaffDetails {
   id                    Int               @id @default(autoincrement())
   userId                Int               @unique
   staffRole             String            @default("Staff")
+  aadharUrl             String?
+  panUrl                String?
   twoFactorSecret       String?           // TOTP secret key (Base32 encoded)
   twoFactorEnabled      Boolean           @default(false) // Whether 2FA is enabled
   twoFactorBackupCodes  Json?             // Array of backup recovery codes
@@ -261,6 +263,8 @@ model Admin {
   phone       String?
   isVerified  Boolean           @default(false)
   imageUrl String?
+  aadharUrl   String?
+  panUrl      String?
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   outlets     AdminOutlet[]

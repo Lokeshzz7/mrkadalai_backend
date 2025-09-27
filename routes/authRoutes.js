@@ -13,6 +13,7 @@ import {
   customerSignup,
 } from '../controllers/auth/auth.controller.js';
 import { authenticateToken } from '../middlewares/auth.middleware.js';
+import { uploadDocuments } from '../middlewares/upload.middleware.js';
 
 const authRouter = express.Router();
 
@@ -29,11 +30,11 @@ authRouter.post('/signup', customerSignup);
 authRouter.post('/signin', customerSignIn);
 
 //staff auth
-authRouter.post('/staff-signup',staffSignup)
+authRouter.post('/staff-signup', uploadDocuments, staffSignup)
 authRouter.post('/staff-signin', staffSignIn);
 
 //admin auth
-authRouter.post('/admin-signup', adminSignup);
+authRouter.post('/admin-signup', uploadDocuments, adminSignup);
 authRouter.post('/admin-signin', adminSignIn);
 
 //super-admin auth

@@ -311,6 +311,8 @@ export const getPendingAdminVerifications = async (req, res, next) => {
         email: true,
         name: true,
         phone: true,
+        aadharUrl: true,
+        panUrl: true,
         createdAt: true
       }
     });
@@ -800,6 +802,12 @@ export const getUnverifiedStaff = async (req, res, next) => {
         phone: true,
         createdAt: true,
         outletId: true,
+        staffInfo: {
+          select: {
+            aadharUrl: true,
+            panUrl: true,
+          }
+        }
       },
     });
     res.status(200).json(unverifiedStaff);

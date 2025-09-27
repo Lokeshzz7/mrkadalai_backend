@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import prisma from '../../prisma/client.js';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../../config/env.js';
+import { uploadDocuments, uploadFilesToS3 } from '../../middlewares/upload.middleware.js';
 
 const client = new OAuth2Client({
   clientId: process.env.GOOGLE_CLIENT_ID,
@@ -115,19 +116,38 @@ export const adminSignup = async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Upload documents to S3 if provided
+    let aadharUrl = null;
+    let panUrl = null;
+    
+    if (req.files) {
+      const uploadedUrls = await uploadFilesToS3(req.files);
+      aadharUrl = uploadedUrls.aadharUrl;
+      panUrl = uploadedUrls.panUrl;
+    }
+
     const admin = await prisma.admin.create({
       data: {
         name,
         email,
         password: hashedPassword,
         isVerified: false,
-        phone
+        phone,
+        aadharUrl,
+        panUrl
       },
     });
 
     console.log(`Admin signup request for ${email}. Awaiting SuperAdmin verification.`);
 
-    res.status(201).json({ message: 'Admin signup successful. Awaiting SuperAdmin verification.', adminId: admin.id });
+    res.status(201).json({ 
+      message: 'Admin signup successful. Awaiting SuperAdmin verification.', 
+      adminId: admin.id,
+      documentsUploaded: {
+        aadhar: !!aadharUrl,
+        pan: !!panUrl
+      }
+    });
   } catch (error) {
     console.error('Admin signup error:', error);
     next(error);
@@ -153,6 +173,16 @@ export const staffSignup = async (req, res, next) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
+    // Upload documents to S3 if provided
+    let aadharUrl = null;
+    let panUrl = null;
+    
+    if (req.files) {
+      const uploadedUrls = await uploadFilesToS3(req.files);
+      aadharUrl = uploadedUrls.aadharUrl;
+      panUrl = uploadedUrls.panUrl;
+    }
+
     const user = await prisma.user.create({
       data: {
         name,
@@ -164,7 +194,9 @@ export const staffSignup = async (req, res, next) => {
         isVerified: false,
         staffInfo: {
           create: {
-            staffRole: "Staff", 
+            staffRole: "Staff",
+            aadharUrl,
+            panUrl
           }
         }
       },
@@ -186,13 +218,22 @@ export const staffSignup = async (req, res, next) => {
       staffDetails: user.staffInfo ? {
         id: user.staffInfo.id,
         staffRole: user.staffInfo.staffRole,
+        aadharUrl: user.staffInfo.aadharUrl,
+        panUrl: user.staffInfo.panUrl,
         permissions: user.staffInfo.permissions,
       } : null, 
     };
 
     console.log(`Staff signup request for ${email}. Awaiting SuperAdmin verification.`);
 
-    res.status(201).json({ message: 'Staff signup successful. Awaiting SuperAdmin verification.', user: response });
+    res.status(201).json({ 
+      message: 'Staff signup successful. Awaiting SuperAdmin verification.', 
+      user: response,
+      documentsUploaded: {
+        aadhar: !!aadharUrl,
+        pan: !!panUrl
+      }
+    });
   } catch (error) {
     console.error('Staff signup error:', error);
     next(error);
