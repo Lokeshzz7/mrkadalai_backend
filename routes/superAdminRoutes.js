@@ -32,7 +32,7 @@ superadminRouter.get('/dashboard/', authenticateToken, authorizeRoles('SUPERADMI
 
 //Outlet Management
 superadminRouter.post('/add-outlet/', restrictToSuperAdmin, addOutlets);
-superadminRouter.get('/get-outlets/', restrictToSuperAdminOrAdmin, getOutlets);
+superadminRouter.get('/get-outlets/', restrictToSuperAdminOrAdminOrCustomer, getOutlets);
 superadminRouter.delete('/remove-outlet/:outletId/', restrictToSuperAdmin, removeOutlets);
 
 //Staff Management
