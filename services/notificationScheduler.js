@@ -129,7 +129,8 @@ class NotificationScheduler {
       const results = await fcmService.sendBulkPushNotifications(tokens, title, message, {
         notificationId: id,
         outletId: outletId,
-        type: 'scheduled'
+        type: 'scheduled',
+        imageUrl: 'https://buvanesh-adya.s3.eu-north-1.amazonaws.com/logo3.png'
       });
 
       // Update delivery status based on results

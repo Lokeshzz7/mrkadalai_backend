@@ -134,7 +134,8 @@ export const sendImmediateNotification = async (req, res) => {
     // Send push notifications
     const results = await fcmService.sendBulkPushNotifications(tokens, title, message, {
       outletId: parseInt(outletId),
-      type: 'immediate'
+      type: 'immediate',
+      imageUrl: 'https://buvanesh-adya.s3.eu-north-1.amazonaws.com/logo3.png'
     });
 
     console.log(results)

@@ -6,6 +6,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Default permanent image URL for notifications
+const DEFAULT_IMAGE_URL = 'https://buvanesh-adya.s3.eu-north-1.amazonaws.com/logo3.png';
+
 const serviceAccount = JSON.parse(
   readFileSync(path.join(__dirname, '../serviceAccountKey.json'), 'utf8')
 );
@@ -43,12 +46,44 @@ class FCMService {
       // Prefer modern send API if available
       if (typeof messaging.send === 'function') {
         const dataStringified = stringifyData({ title, message, ...data });
+
+        // Optional customization fields (image defaults to permanent URL)
+        const imageUrl = data?.imageUrl || data?.image || DEFAULT_IMAGE_URL;
+        const tag = data?.tag || data?.collapseKey || undefined;
+        const channelId = data?.channelId || undefined;
+        const color = data?.color || undefined;
+        const icon = data?.icon || undefined;
+
         const payload = {
           token: deviceToken,
-          notification: { title, body: message },
+          notification: { title, body: message, ...(imageUrl ? { image: imageUrl } : {}) },
           data: dataStringified,
-          android: { priority: 'high', notification: { sound: 'default' } },
-          apns: { payload: { aps: { sound: 'default', badge: 1 } } }
+          android: {
+            priority: 'high',
+            notification: {
+              sound: 'default',
+              ...(imageUrl ? { image: imageUrl } : {}),
+              ...(tag ? { tag } : {}),
+              ...(channelId ? { channelId } : {}),
+              ...(color ? { color } : {}),
+              ...(icon ? { icon } : {})
+            }
+          },
+          apns: {
+            headers: {
+              ...(tag ? { 'apns-collapse-id': tag } : {})
+            },
+            fcm_options: {
+              ...(imageUrl ? { image: imageUrl } : {})
+            },
+            payload: {
+              aps: {
+                sound: 'default',
+                badge: 1,
+                ...(tag ? { 'thread-id': tag } : {})
+              }
+            }
+          }
         };
         const response = await messaging.send(payload);
         console.log(`Notification sent successfully to device: ${deviceToken}`, response);
@@ -91,13 +126,46 @@ class FCMService {
     const results = [];
 
     // Build a sender using messaging.send (works in all versions where single send works)
-    const makeMessage = (token) => ({
-      token,
-      notification: { title, body: message },
-      data: stringifyData({ title, message, ...data }),
-      android: { priority: 'high', notification: { sound: 'default' } },
-      apns: { payload: { aps: { sound: 'default', badge: 1 } } }
-    });
+    const makeMessage = (token) => {
+      const dataStringified = stringifyData({ title, message, ...data });
+      const imageUrl = data?.imageUrl || data?.image || DEFAULT_IMAGE_URL;
+      const tag = data?.tag || data?.collapseKey || undefined;
+      const channelId = data?.channelId || undefined;
+      const color = data?.color || undefined;
+      const icon = data?.icon || undefined;
+
+      return {
+        token,
+        notification: { title, body: message, ...(imageUrl ? { image: imageUrl } : {}) },
+        data: dataStringified,
+        android: {
+          priority: 'high',
+          notification: {
+            sound: 'default',
+            ...(imageUrl ? { image: imageUrl } : {}),
+            ...(tag ? { tag } : {}),
+            ...(channelId ? { channelId } : {}),
+            ...(color ? { color } : {}),
+            ...(icon ? { icon } : {})
+          }
+        },
+        apns: {
+          headers: {
+            ...(tag ? { 'apns-collapse-id': tag } : {})
+          },
+          fcm_options: {
+            ...(imageUrl ? { image: imageUrl } : {})
+          },
+          payload: {
+            aps: {
+              sound: 'default',
+              badge: 1,
+              ...(tag ? { 'thread-id': tag } : {})
+            }
+          }
+        }
+      };
+    };
 
     // Process in small batches with Promise.allSettled
     for (let i = 0; i < deviceTokens.length; i += concurrency) {
