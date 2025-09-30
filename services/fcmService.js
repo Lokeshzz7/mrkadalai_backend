@@ -6,8 +6,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Default permanent image URL for notifications
-const DEFAULT_IMAGE_URL = 'https://buvanesh-adya.s3.eu-north-1.amazonaws.com/logo3.png';
+// No default big image. Small icon is controlled by the client app resources.
 
 const serviceAccount = JSON.parse(
   readFileSync(path.join(__dirname, '../serviceAccountKey.json'), 'utf8')
@@ -47,8 +46,8 @@ class FCMService {
       if (typeof messaging.send === 'function') {
         const dataStringified = stringifyData({ title, message, ...data });
 
-        // Optional customization fields (image defaults to permanent URL)
-        const imageUrl = data?.imageUrl || data?.image || DEFAULT_IMAGE_URL;
+        // Optional customization fields (do not force big image; include only if explicitly provided)
+        const imageUrl = data?.imageUrl || data?.image || undefined;
         const tag = data?.tag || data?.collapseKey || undefined;
         const channelId = data?.channelId || undefined;
         const color = data?.color || undefined;
@@ -128,7 +127,7 @@ class FCMService {
     // Build a sender using messaging.send (works in all versions where single send works)
     const makeMessage = (token) => {
       const dataStringified = stringifyData({ title, message, ...data });
-      const imageUrl = data?.imageUrl || data?.image || DEFAULT_IMAGE_URL;
+      const imageUrl = data?.imageUrl || data?.image || undefined;
       const tag = data?.tag || data?.collapseKey || undefined;
       const channelId = data?.channelId || undefined;
       const color = data?.color || undefined;
