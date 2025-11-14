@@ -11,7 +11,7 @@ if (!DB_URI) {
 }
 
 // Load the AWS RDS CA certificate
-const caCertPath = path.resolve('eu-north-1-bundle.pem'); // Adjust path if needed
+const caCertPath = path.resolve('./ap-south-1-bundle.pem'); // Adjust path if needed
 const caCert = fs.readFileSync(caCertPath).toString();
 
 const pool = new Pool({

@@ -52,6 +52,5 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, async () => {
   console.log(`Server listening on http://localhost:${PORT}`);
-  console.log(`External access: http://51.21.198.214:${PORT}`);
   await pool;
 });

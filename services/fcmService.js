@@ -1,5 +1,5 @@
 import admin from 'firebase-admin';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -8,9 +8,34 @@ const __dirname = path.dirname(__filename);
 
 // No default big image. Small icon is controlled by the client app resources.
 
-const serviceAccount = JSON.parse(
-  readFileSync(path.join(__dirname, '../serviceAccountKey.json'), 'utf8')
-);
+const resolveServiceAccount = () => {
+  try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    }
+
+    const configuredPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+    const defaultPaths = [
+      configuredPath,
+      path.join(__dirname, '../serviceAccountKey.json'),
+      path.join(__dirname, '../../mrkadalai-16fdc-firebase-adminsdk-fbsvc-8a9c66a79c.json')
+    ].filter(Boolean);
+
+    const fallbackPath = defaultPaths.find((p) => existsSync(p));
+
+    if (!fallbackPath) {
+      console.warn('[FCM] service account file not found. Push notifications disabled.');
+      return null;
+    }
+
+    return JSON.parse(readFileSync(fallbackPath, 'utf8'));
+  } catch (error) {
+    console.warn('[FCM] Failed to load Firebase service account:', error.message);
+    return null;
+  }
+};
+
+const serviceAccount = resolveServiceAccount();
 
 // FCM data payload values MUST be strings. This helper coerces values.
 const stringifyData = (obj = {}) =>
@@ -22,6 +47,13 @@ const stringifyData = (obj = {}) =>
 
 class FCMService {
   constructor() {
+    this.enabled = false;
+
+    if (!serviceAccount) {
+      console.warn('[FCM] Firebase credentials missing. Service disabled.');
+      return;
+    }
+
     // Initialize the Firebase Admin SDK only if it hasn't been already.
     if (!admin.apps.length) {
       admin.initializeApp({
@@ -29,6 +61,8 @@ class FCMService {
       });
       console.log('✅ Firebase Admin SDK initialized successfully.');
     }
+
+    this.enabled = true;
   }
 
   /**
@@ -39,6 +73,10 @@ class FCMService {
    * @param {object} data - Additional data to send with the notification.
    */
   async sendPushNotification(deviceToken, title, message, data = {}) {
+    if (!this.enabled) {
+      console.warn('[FCM] sendPushNotification skipped (service disabled).');
+      return { success: false, error: 'fcm_disabled' };
+    }
     try {
       const messaging = admin.messaging();
 
@@ -120,6 +158,15 @@ class FCMService {
       throw new Error('Device tokens array is required and cannot be empty');
     }
 
+     if (!this.enabled) {
+      console.warn('[FCM] sendBulkPushNotifications skipped (service disabled).');
+      return deviceTokens.map((token) => ({
+        deviceToken: token,
+        success: false,
+        error: 'fcm_disabled'
+      }));
+    }
+
     const messaging = admin.messaging();
     const concurrency = 50; // limit concurrent sends to avoid throttling
     const results = [];
@@ -192,6 +239,10 @@ class FCMService {
    * @param {object} data - Additional data to send with the notification.
    */
   async sendToTopic(topic, title, message, data = {}) {
+    if (!this.enabled) {
+      console.warn('[FCM] sendToTopic skipped (service disabled).');
+      return { success: false, error: 'fcm_disabled' };
+    }
     const payload = {
       topic: topic,
       notification: {
@@ -220,6 +271,10 @@ class FCMService {
    * @param {string} deviceToken - The FCM token to validate.
    */
   async validateDeviceToken(deviceToken) {
+    if (!this.enabled) {
+      console.warn('[FCM] validateDeviceToken skipped (service disabled).');
+      return false;
+    }
     const message = {
       token: deviceToken
     };
@@ -237,7 +292,7 @@ class FCMService {
    * Returns the status of the FCM service connection.
    */
   getServiceStatus() {
-    const isConfigured = admin.apps.length > 0;
+    const isConfigured = this.enabled && admin.apps.length > 0;
     return {
       configured: isConfigured,
       projectId: isConfigured ? admin.apps[0]?.options.credential.projectId : 'Not Initialized'
