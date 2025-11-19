@@ -30,7 +30,7 @@ app.use(session({
 // CORS configuration
 const isProduction = process.env.NODE_ENV === 'production';
 const allowedOrigins = isProduction 
-  ? process.env.ALLOWED_ORIGINS?.split(',') || ['https://yourdomain.com']
+  ? process.env.ALLOWED_ORIGINS?.split(',') || ['http://admins.mrkadalai.com.s3-website.ap-south-1.amazonaws.com/','http://staffs.mrkadalai.com.s3-website.ap-south-1.amazonaws.com/']
   : true; // Allow all in development
 
 app.use(cors({
