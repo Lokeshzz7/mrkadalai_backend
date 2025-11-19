@@ -27,9 +27,14 @@ app.use(session({
   saveUninitialized: false,
 }));
 
-// CORS configuration - Allow all origins for development
+// CORS configuration
+const isProduction = process.env.NODE_ENV === 'production';
+const allowedOrigins = isProduction 
+  ? process.env.ALLOWED_ORIGINS?.split(',') || ['https://yourdomain.com']
+  : true; // Allow all in development
+
 app.use(cors({
-  origin: true,
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
@@ -38,7 +43,10 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// app.use(arjectMiddleware); // Keep disabled for development
+// Enable Arcjet in production
+if (isProduction) {
+  app.use(arjectMiddleware);
+}
 
 app.use('/api/superadmin', superAdminRoutes);
 app.use('/api/auth', authRoutes);
@@ -51,6 +59,10 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, async () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+  console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(`📡 Server listening on http://localhost:${PORT}`);
+  if (isProduction) {
+    console.log(`🌐 External access: http://${process.env.EC2_PUBLIC_IP || 'your-ec2-ip'}:${PORT}`);
+  }
   await pool;
 });

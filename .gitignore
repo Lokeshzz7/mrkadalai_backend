@@ -1,5 +1,20 @@
 node_modules
 # Keep environment variables out of version control
 .env
+.env.local
+.env.development.local
+.env.production.local
 
+# Firebase service account (contains sensitive keys)
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!eslint.config.js
+
+# SSL certificates
+*.pem
+
+# Prisma generated files
 /generated/prisma
+.prisma
