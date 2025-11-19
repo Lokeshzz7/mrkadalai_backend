@@ -11,4 +11,9 @@ export const {
     JWT_EXPIRES_IN,
     ARCJET_KEY,
     ARCJET_ENV,
+    COOKIE_SECURE,
 } = process.env;
+
+export const isSecureCookie = COOKIE_SECURE !== undefined
+    ? COOKIE_SECURE === 'true'
+    : (NODE_ENV === 'production');
