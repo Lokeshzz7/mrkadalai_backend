@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { OAuth2Client } from 'google-auth-library';
 import prisma from '../../prisma/client.js';
-import { JWT_SECRET, JWT_EXPIRES_IN } from '../../config/env.js';
+import { JWT_SECRET, JWT_EXPIRES_IN, isSecureCookie } from '../../config/env.js';
 import { uploadDocuments, uploadFilesToS3 } from '../../middlewares/upload.middleware.js';
 
 
@@ -64,7 +64,7 @@ export const customerSignup = async (req, res, next) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureCookie,
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7,
     });
@@ -269,7 +269,7 @@ export const superAdminSignIn = async (req, res, next) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureCookie,
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7,
     });
@@ -390,7 +390,7 @@ export const adminSignIn = async (req, res, next) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureCookie,
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7,
     });
@@ -453,7 +453,7 @@ export const customerSignIn = async (req, res, next) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureCookie,
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7,
     });
@@ -518,7 +518,7 @@ export const staffSignIn = async (req, res, next) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecureCookie,
       sameSite: 'strict',
       maxAge: 1000 * 60 * 60 * 24 * 7,
     });
