@@ -124,7 +124,7 @@ superadminRouter.post('/dashboard/peak-time-slots', restrictToSuperAdminOrAdmin,
 superadminRouter.get('/pending-admins', restrictToSuperAdmin, getPendingAdminVerifications);
 superadminRouter.post('/verify-admin/:adminId', restrictToSuperAdmin, verifyAdmin);
 superadminRouter.get('/verified-admins', restrictToSuperAdmin, getVerifiedAdmins);
-superadminRouter.post('/admin/:adminId', restrictToSuperAdminOrAdmin, getAdminDetails);
+superadminRouter.get('/admin/:adminId', restrictToSuperAdminOrAdmin, getAdminDetails);
 superadminRouter.delete('/admin/:adminId', restrictToSuperAdmin, deleteAdmin);
 
 // Superadmin: Pending staff verifications
