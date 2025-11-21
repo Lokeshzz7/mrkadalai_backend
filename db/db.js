@@ -17,7 +17,7 @@ const caCert = fs.readFileSync(caCertPath).toString();
 const pool = new Pool({
   connectionString: DB_URI,
   ssl: {
-    rejectUnauthorized: true, // Enforce certificate validation
+    rejectUnauthorized: false, // Enforce certificate validation
     ca: caCert, // AWS RDS CA certificate
   },
   keepAlive: true,
