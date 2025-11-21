@@ -5,7 +5,6 @@ import {
   signOut,
   checkAuth,
   staffSignIn,
-  googleSignIn,
   superAdminSignIn,
   adminSignup,
   staffSignup,
