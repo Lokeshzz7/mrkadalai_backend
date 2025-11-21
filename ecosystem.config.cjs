@@ -1,5 +1,5 @@
 // PM2 Ecosystem Configuration
-export default {
+module.exports = {
   apps: [{
     name: 'mrkadalai-backend',
     script: 'app.js',
