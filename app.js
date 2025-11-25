@@ -29,15 +29,50 @@ app.use(session({
 
 // CORS configuration
 const isProduction = process.env.NODE_ENV === 'production';
-const allowedOrigins = isProduction 
-  ? process.env.ALLOWED_ORIGINS?.split(',') || ['http://admins.mrkadalai.com.s3-website.ap-south-1.amazonaws.com/','http://staffs.mrkadalai.com.s3-website.ap-south-1.amazonaws.com/']
+
+// Define allowed origins - remove trailing slashes
+const defaultProductionOrigins = [
+  'http://admins.mrkadalai.com.s3-website.ap-south-1.amazonaws.com',
+  'http://staffs.mrkadalai.com.s3-website.ap-south-1.amazonaws.com',
+  'http://localhost:3000', // For local testing
+  'http://localhost:5173', // Vite default
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173'
+];
+
+const allowedOriginsList = isProduction 
+  ? (process.env.ALLOWED_ORIGINS 
+      ? process.env.ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
+      : defaultProductionOrigins)
   : true; // Allow all in development
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, Postman, or curl requests)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    if (isProduction) {
+      // Check if origin is in allowed list
+      if (allowedOriginsList.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.warn(`⚠️  CORS blocked origin: ${origin}`);
+        console.log(`Allowed origins: ${JSON.stringify(allowedOriginsList, null, 2)}`);
+        callback(new Error('Not allowed by CORS'));
+      }
+    } else {
+      // Development: allow all origins
+      callback(null, true);
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 app.use(express.json({ limit: '10mb' }));
