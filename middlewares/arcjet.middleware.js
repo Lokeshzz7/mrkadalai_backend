@@ -2,11 +2,20 @@ import aj from "../config/arcjet.js";
 
 const arjectMiddleware = async (req, res, next) => {
     try {
-        // ! Currently not using arcjet for dev use bt need to remove for the produciton for using the arcjet
-        if (
-            process.env.NODE_ENV !== 'production' &&
-            req.path === '/api/v1/auth/me'
-        ) {
+        // Bypass Arcjet completely if no key is configured
+        if (!process.env.ARCJET_KEY) {
+            return next();
+        }
+
+        // In production, bypass Arcjet for auth/login routes to avoid false "Bot detected" blocks
+        const bypassPaths = [
+            '/api/auth/superadmin-signin',
+            '/api/auth/admin-signin',
+            '/api/auth/staff-signin',
+            '/api/auth/signin',
+            '/api/auth/signup',
+        ];
+        if (bypassPaths.includes(req.path)) {
             return next();
         }
         
