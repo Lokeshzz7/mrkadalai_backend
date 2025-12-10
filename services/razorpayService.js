@@ -10,15 +10,13 @@ class RazorpayService {
   }
 
   /**
-   * Calculate the gross amount customer needs to pay including Razorpay service charge
-   * Razorpay charges approximately 2% (amount / 1.02 gives net amount after deducting 2%)
-   * So if customer wants ₹100 in wallet, they pay ₹102 (approx)
+   * Calculate the gross amount customer needs to pay
+   * No service charge added - customer pays exactly what they want to recharge
    */
   calculateGrossAmount(walletAmount) {
-    // To get walletAmount after service charge deduction, customer pays: walletAmount / 0.98
-    // But the formula given is amount/1.02, which means: grossAmount = walletAmount * 1.02
-    const grossAmount = Math.round(walletAmount * 1.02 * 100) / 100; // Round to 2 decimal places
-    const serviceCharge = Math.round((grossAmount - walletAmount) * 100) / 100;
+    // No service charge - customer pays exactly the wallet amount
+    const grossAmount = Math.round(walletAmount * 100) / 100; // Round to 2 decimal places
+    const serviceCharge = 0; // No service charge
     
     return {
       walletAmount: walletAmount,
@@ -135,7 +133,7 @@ class RazorpayService {
       walletAmount: walletAmount,
       serviceCharge: serviceCharge,
       totalPayable: grossAmount,
-      serviceChargePercentage: Math.round((serviceCharge / walletAmount) * 100 * 100) / 100 // Round to 2 decimal places
+      serviceChargePercentage: 0 // No service charge
     };
   }
 }
