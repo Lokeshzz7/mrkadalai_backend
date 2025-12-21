@@ -629,32 +629,6 @@ export const customerAppOrder = async (req, res) => {
         throw new Error("Invalid delivery slot");
       }
 
-      let razorpayPaymentId = null;
-      if ((paymentMethod === 'UPI' || paymentMethod === 'CARD') && paymentDetails) {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = paymentDetails;
-        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-          throw new Error("Invalid payment details for online payment");
-        }
-        const body = razorpay_order_id + "|" + razorpay_payment_id;
-        const expectedSignature = crypto
-          .createHmac("sha256", razorpay.key_secret) // Use razorpay instance secret
-          .update(body.toString())
-          .digest("hex");
-        const isAuthentic = expectedSignature === razorpay_signature;
-        if (!isAuthentic) {
-          throw new Error("Payment verification failed: Invalid signature");
-        }
-        const payment = await razorpay.payments.fetch(razorpay_payment_id);
-        if (payment.status !== 'captured' && payment.status !== 'authorized') {
-          throw new Error("Payment not successful");
-        }
-        const paidAmount = payment.amount / 100;
-        if (Math.abs(paidAmount - totalAmount) > 0.01) {
-          throw new Error(`Payment amount mismatch. Expected: ${totalAmount}, Paid: ${paidAmount}`);
-        }
-        razorpayPaymentId = razorpay_payment_id;
-      }
-
       const outlet = await tx.outlet.findUnique({
         where: { id: outletId },
         select: { id: true, isActive: true, name: true },
@@ -675,33 +649,9 @@ export const customerAppOrder = async (req, res) => {
       }
       const customerId = customer.id;
 
-      const stockValidationErrors = [];
-      const inventoryUpdates = [];
-      for (const item of items) {
-        const inventory = await tx.inventory.findUnique({
-          where: { productId: item.productId },
-        });
-        if (!inventory) {
-          stockValidationErrors.push(`Product ${item.productId} not found in inventory`);
-          continue;
-        }
-        if (inventory.quantity < item.quantity) {
-          stockValidationErrors.push(
-            `Insufficient stock for product ${item.productId}. Available: ${inventory.quantity}, Requested: ${item.quantity}`
-          );
-          continue;
-        }
-        inventoryUpdates.push({
-          productId: item.productId,
-          currentStock: inventory.quantity,
-          requestedQuantity: item.quantity,
-          newStock: inventory.quantity - item.quantity,
-        });
-      }
-      if (stockValidationErrors.length > 0) {
-        throw new Error(`Stock validation failed: ${stockValidationErrors.join(', ')}`);
-      }
-
+      // Calculate coupon discount BEFORE payment verification
+      // Industry standard: Minimum order value is checked on original amount (before discount)
+      // Payment verification uses final amount (after discount)
       let finalTotalAmount = totalAmount;
       let couponDiscount = 0;
       let coupon = null;
@@ -729,8 +679,10 @@ export const customerAppOrder = async (req, res) => {
         if (coupon.usedCount >= coupon.usageLimit) {
           throw new Error("Coupon usage limit reached");
         }
+        // IMPORTANT: Check minimum order value on ORIGINAL amount (before discount)
+        // This is the industry standard - ensures order qualifies even if discount brings it below minimum
         if (totalAmount < coupon.minOrderValue) {
-          throw new Error(`Minimum order value of ${coupon.minOrderValue} required`);
+          throw new Error(`Minimum order value of ₹${coupon.minOrderValue} required. Your order value is ₹${totalAmount}`);
         }
         if (coupon.rewardValue > 0) {
           if (coupon.rewardValue < 1) {
@@ -740,9 +692,68 @@ export const customerAppOrder = async (req, res) => {
           }
         }
         finalTotalAmount = totalAmount - couponDiscount;
+        // Ensure final amount doesn't go negative
+        if (finalTotalAmount < 0) {
+          finalTotalAmount = 0;
+        }
       } else {
         // No coupon provided, use totalAmount as finalTotalAmount
         finalTotalAmount = totalAmount;
+      }
+
+      // Verify payment amount against FINAL amount (after discount)
+      let razorpayPaymentId = null;
+      if ((paymentMethod === 'UPI' || paymentMethod === 'CARD') && paymentDetails) {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = paymentDetails;
+        if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+          throw new Error("Invalid payment details for online payment");
+        }
+        const body = razorpay_order_id + "|" + razorpay_payment_id;
+        const expectedSignature = crypto
+          .createHmac("sha256", razorpay.key_secret) // Use razorpay instance secret
+          .update(body.toString())
+          .digest("hex");
+        const isAuthentic = expectedSignature === razorpay_signature;
+        if (!isAuthentic) {
+          throw new Error("Payment verification failed: Invalid signature");
+        }
+        const payment = await razorpay.payments.fetch(razorpay_payment_id);
+        if (payment.status !== 'captured' && payment.status !== 'authorized') {
+          throw new Error("Payment not successful");
+        }
+        const paidAmount = payment.amount / 100;
+        // Compare against finalTotalAmount (after discount), not totalAmount
+        if (Math.abs(paidAmount - finalTotalAmount) > 0.01) {
+          throw new Error(`Payment amount mismatch. Expected: ₹${finalTotalAmount}, Paid: ₹${paidAmount}`);
+        }
+        razorpayPaymentId = razorpay_payment_id;
+      }
+
+      const stockValidationErrors = [];
+      const inventoryUpdates = [];
+      for (const item of items) {
+        const inventory = await tx.inventory.findUnique({
+          where: { productId: item.productId },
+        });
+        if (!inventory) {
+          stockValidationErrors.push(`Product ${item.productId} not found in inventory`);
+          continue;
+        }
+        if (inventory.quantity < item.quantity) {
+          stockValidationErrors.push(
+            `Insufficient stock for product ${item.productId}. Available: ${inventory.quantity}, Requested: ${item.quantity}`
+          );
+          continue;
+        }
+        inventoryUpdates.push({
+          productId: item.productId,
+          currentStock: inventory.quantity,
+          requestedQuantity: item.quantity,
+          newStock: inventory.quantity - item.quantity,
+        });
+      }
+      if (stockValidationErrors.length > 0) {
+        throw new Error(`Stock validation failed: ${stockValidationErrors.join(', ')}`);
       }
 
       let walletTransaction = null;

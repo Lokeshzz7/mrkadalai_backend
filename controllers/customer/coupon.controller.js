@@ -140,20 +140,29 @@ export const applyCoupon = async (req, res) => {
       return res.status(400).json({ message: 'Coupon usage limit reached' });
     }
 
+    // Industry standard: Minimum order value is checked on ORIGINAL amount (before discount)
+    // This ensures orders qualify even if the discount brings the final amount below minimum
+    // Example: Min order ₹100, Order ₹120, Discount 25% → Final ₹90 (valid, as original ₹120 > ₹100)
     if (currentTotal < coupon.minOrderValue) {
-      return res.status(400).json({ message: `Minimum order value of ${coupon.minOrderValue} required` });
+      return res.status(400).json({ 
+        message: `Minimum order value of ₹${coupon.minOrderValue} required. Your current order value is ₹${currentTotal}` 
+      });
     }
 
     let discount = 0;
     if (coupon.rewardValue > 0) {
       if (coupon.rewardValue <= 1) {
-        discount = currentTotal * coupon.rewardValue; 
+        discount = currentTotal * coupon.rewardValue; // Percentage discount (e.g., 0.25 = 25%)
       } else if (coupon.rewardValue <= currentTotal) {
-        discount = coupon.rewardValue;
+        discount = coupon.rewardValue; // Fixed amount discount (e.g., ₹50)
+      } else {
+        // Fixed amount discount exceeds order total, cap at order total
+        discount = currentTotal;
       }
     }
 
-    const totalAfterDiscount = currentTotal - discount;
+    // Calculate final amount after discount (minimum 0)
+    const totalAfterDiscount = Math.max(0, currentTotal - discount);
 
     res.status(200).json({
       message: 'Coupon applied successfully',
