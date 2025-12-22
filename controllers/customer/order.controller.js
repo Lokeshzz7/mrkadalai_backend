@@ -649,10 +649,28 @@ export const customerAppOrder = async (req, res) => {
       }
       const customerId = customer.id;
 
+      // Calculate ORIGINAL cart total from items (before any discount)
+      // This ensures we validate minimum order on actual cart value, not discounted amount
+      let originalCartTotal = 0;
+      for (const item of items) {
+        if (!item.productId || !item.quantity || !item.unitPrice) {
+          throw new Error("Invalid item data: productId, quantity, and unitPrice are required");
+        }
+        originalCartTotal += item.quantity * item.unitPrice;
+      }
+      // Round to 2 decimal places to avoid floating point issues
+      originalCartTotal = Math.round(originalCartTotal * 100) / 100;
+
+      // Validate that provided totalAmount matches calculated originalCartTotal (within small tolerance)
+      // This ensures frontend isn't sending discounted amount as totalAmount
+      if (Math.abs(totalAmount - originalCartTotal) > 0.01) {
+        throw new Error(`Cart total mismatch. Calculated: ₹${originalCartTotal}, Provided: ₹${totalAmount}`);
+      }
+
       // Calculate coupon discount BEFORE payment verification
-      // Industry standard: Minimum order value is checked on original amount (before discount)
+      // Industry standard: Minimum order value is checked on ORIGINAL amount (before discount)
       // Payment verification uses final amount (after discount)
-      let finalTotalAmount = totalAmount;
+      let finalTotalAmount = originalCartTotal;
       let couponDiscount = 0;
       let coupon = null;
       if (couponCode) {
@@ -679,26 +697,30 @@ export const customerAppOrder = async (req, res) => {
         if (coupon.usedCount >= coupon.usageLimit) {
           throw new Error("Coupon usage limit reached");
         }
-        // IMPORTANT: Check minimum order value on ORIGINAL amount (before discount)
+        // IMPORTANT: Check minimum order value on ORIGINAL cart total (before discount)
         // This is the industry standard - ensures order qualifies even if discount brings it below minimum
-        if (totalAmount < coupon.minOrderValue) {
-          throw new Error(`Minimum order value of ₹${coupon.minOrderValue} required. Your order value is ₹${totalAmount}`);
+        // Example: Min order ₹100, Cart ₹120, Discount 25% → Final ₹90 (valid, as original ₹120 >= ₹100)
+        if (originalCartTotal < coupon.minOrderValue) {
+          throw new Error(`Minimum order value of ₹${coupon.minOrderValue} required. Your cart value is ₹${originalCartTotal}`);
         }
         if (coupon.rewardValue > 0) {
           if (coupon.rewardValue < 1) {
-            couponDiscount = totalAmount * coupon.rewardValue; // Percentage discount
-          } else if (coupon.rewardValue <= totalAmount) {
+            couponDiscount = originalCartTotal * coupon.rewardValue; // Percentage discount
+          } else if (coupon.rewardValue <= originalCartTotal) {
             couponDiscount = coupon.rewardValue; // Fixed amount discount
+          } else {
+            // Fixed discount exceeds cart total, cap at cart total
+            couponDiscount = originalCartTotal;
           }
         }
-        finalTotalAmount = totalAmount - couponDiscount;
+        finalTotalAmount = originalCartTotal - couponDiscount;
         // Ensure final amount doesn't go negative
         if (finalTotalAmount < 0) {
           finalTotalAmount = 0;
         }
       } else {
-        // No coupon provided, use totalAmount as finalTotalAmount
-        finalTotalAmount = totalAmount;
+        // No coupon provided, use originalCartTotal as finalTotalAmount
+        finalTotalAmount = originalCartTotal;
       }
 
       // Verify payment amount against FINAL amount (after discount)
