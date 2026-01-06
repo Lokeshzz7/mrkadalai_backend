@@ -96,6 +96,7 @@ export const getProfile = async (req, res) => {
 
     res.status(200).json({
       id: user.id,
+      customerId: user.customerInfo.id,
       name: user.name,
       email: user.email,
       phone: user.phone,
