@@ -1060,7 +1060,7 @@ export const customerAppOrderHistory = async (req, res) => {
       where: {
         customerId,
         status: {
-          in: ['DELIVERED', 'CANCELLED'],
+          in: ['DELIVERED', 'CANCELLED','PARTIALLY_DELIVERED','PARTIAL_CANCEL'],
         },
       },
       include: {
